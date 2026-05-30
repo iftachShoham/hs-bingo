@@ -71,7 +71,10 @@
           <!-- Proof zone: drag-drop / paste / camera / URL -->
           <div id="proof-zone" class="proof-zone">
             <div id="proof-preview" class="proof-preview hidden">
-              <img id="proof-img" alt="proof preview" />
+              <label for="proof-file" class="proof-img-label">
+                <img id="proof-img" alt="proof preview" />
+                <span class="proof-replace-hint">📷 Replace</span>
+              </label>
               <button class="proof-clear-btn" onclick="clearProof()">✕</button>
             </div>
             <div id="proof-inputs">

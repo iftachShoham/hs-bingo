@@ -485,12 +485,44 @@ body {
   text-align: center;
 }
 
-.proof-preview img {
+.proof-img-label {
+  display: inline-block;
+  position: relative;
+  cursor: pointer;
+}
+
+.proof-img-label img {
   max-width: 100%;
   max-height: 160px;
   border-radius: 6px;
   object-fit: contain;
   border: 1px solid var(--border);
+  display: block;
+  transition: opacity 0.2s;
+}
+
+.proof-img-label:hover img,
+.proof-img-label:active img {
+  opacity: 0.7;
+}
+
+.proof-replace-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+
+.proof-img-label:hover .proof-replace-hint {
+  opacity: 1;
 }
 
 .proof-clear-btn {
