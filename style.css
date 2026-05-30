@@ -183,6 +183,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  align-items: center;
   padding: 14px;
   overflow: hidden;
   min-width: 0;
@@ -193,11 +194,11 @@ body {
   grid-template-columns: repeat(10, 1fr);
   grid-template-rows: repeat(10, 1fr);
   gap: 3px;
-  width: 100%;
-  /* keep it square */
+  /* square board sized to fill available height */
   aspect-ratio: 1 / 1;
-  max-height: calc(100vh - 180px);
-  max-width: calc(100vh - 180px);
+  height: calc(100vh - 240px);
+  max-height: calc(100% - 44px);
+  max-width: 100%;
 }
 
 .tile {
@@ -270,16 +271,18 @@ body {
 .comp-done-4 { color: var(--t4); }
 
 .snake-badge, .rat-badge {
-  font-size: 8px;
   position: absolute;
-  top: 2px;
-  right: 3px;
+  top: 1px;
+  right: 2px;
   line-height: 1;
 }
 
+.snake-badge { font-size: 14px; }
+.rat-badge   { font-size: 12px; }
+
 /* Tile variant backgrounds */
-.tile.snake-head  { background: var(--tile-snake); border-color: #6b2020; }
-.tile.rat-tile    { background: var(--tile-rat);   border-color: #6b4e20; }
+.tile.snake-head  { background: #4a1010; border-color: #a02828; }
+.tile.rat-tile    { background: var(--tile-rat);   border-color: #8b5e28; }
 .tile.my-tile     { background: var(--tile-my);    border-color: #1a88cc; }
 .tile.done-by-me  { background: var(--tile-done-me); }
 

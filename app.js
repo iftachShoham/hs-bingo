@@ -247,7 +247,6 @@ function renderEmptyBoard() {
     row.forEach(tileNum => {
       const cell = document.createElement("div");
       cell.className = "tile";
-      if (RAT_TILES.has(tileNum)) cell.classList.add("rat-tile");
       const numEl = document.createElement("div");
       numEl.className = "tile-num";
       numEl.textContent = tileNum;
@@ -259,6 +258,7 @@ function renderEmptyBoard() {
 
 function renderBoard(data) {
   const { teams, tileContentMap, completedByTile, snakes } = data;
+  const triggeredRatSet = new Set((data.triggeredRats || []).map(Number));
 
   const teamsByTile = {};
   teams.forEach(t => {
@@ -281,9 +281,9 @@ function renderBoard(data) {
       const cell = document.createElement("div");
       cell.className = "tile";
 
-      if (snakes[tileNum])              cell.classList.add("snake-head");
-      else if (RAT_TILES.has(tileNum))  cell.classList.add("rat-tile");
-      if (tileNum === myTile)            cell.classList.add("my-tile");
+      if (snakes[tileNum])                     cell.classList.add("snake-head");
+      else if (triggeredRatSet.has(tileNum))   cell.classList.add("rat-tile");
+      if (tileNum === myTile)                  cell.classList.add("my-tile");
       if (myId && completedIds.includes(myId)) cell.classList.add("done-by-me");
 
       // Tile number
@@ -292,12 +292,12 @@ function renderBoard(data) {
       numEl.textContent = tileNum;
       cell.appendChild(numEl);
 
-      // Icon badge (top-right)
+      // Icon badge (top-right) — rats only shown once triggered
       if (snakes[tileNum]) {
         const b = document.createElement("span");
         b.className = "snake-badge"; b.textContent = "🐍";
         cell.appendChild(b);
-      } else if (RAT_TILES.has(tileNum)) {
+      } else if (triggeredRatSet.has(tileNum)) {
         const b = document.createElement("span");
         b.className = "rat-badge"; b.textContent = "🐀";
         cell.appendChild(b);
@@ -345,7 +345,7 @@ function renderBoard(data) {
       let tipLines = [`Tile ${tileNum}`];
       if (content) tipLines.push(content);
       if (snakes[tileNum]) tipLines.push(`🐍 Snake → tile ${snakes[tileNum]}`);
-      if (RAT_TILES.has(tileNum)) tipLines.push("🐀 Rat trap!");
+      if (triggeredRatSet.has(tileNum)) tipLines.push("🐀 Rat trap (triggered)");
       if (teamsHere.length) tipLines.push(teamsHere.map(t => `${getTeamBullet(t.team_id)} ${t.team_name}`).join("  "));
       tip.textContent = tipLines.join("\n");
       cell.appendChild(tip);
