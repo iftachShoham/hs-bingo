@@ -1,104 +1,117 @@
 // ══════════════════════════════════════════════════════
-//  CONFIG — fill these in before deploying to GitHub Pages
+//  CONFIG — fill these two values in before testing
 // ══════════════════════════════════════════════════════
 const CONFIG = {
-  CLOUDFLARE_URL: "https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev",
-  WEB_SECRET: "YOUR_WEB_APP_SECRET_HERE",
-  // Admin code — whoever enters this gets Game Master controls.
-  // Set it to any string you like and share only with game masters.
+  // Your Google Apps Script web app URL (the one Cloudflare already calls)
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
+
+  // The WEB_APP_SECRET from your Apps Script (line 7 in the script)
+  WEB_SECRET: "placeholder",
+
+  // Whoever enters this code gets the Game Master panel (choose anything)
   ADMIN_CODE: "gamemaster"
 };
 
-// ── RAT tile list (must match AppsScript) ──
+// ── RAT tiles (must match the Apps Script constant) ──
 const RAT_TILES = new Set([7,8,9,10,11,12,13,22,31,44,55,67,71,82,89,95]);
 
 // ── Team visuals ──
 const TEAM_BULLETS = { 1:"🟣", 2:"🔴", 3:"🔵", 4:"🟡" };
 const TEAM_COLORS  = { 1:"#9b59b6", 2:"#e74c3c", 3:"#3498db", 4:"#f1c40f" };
-function getTeamBullet(id) { return TEAM_BULLETS[id] || "⚪"; }
+function getTeamBullet(id) { return TEAM_BULLETS[Number(id)] || "⚪"; }
 
 // ── App state ──
 const state = {
-  teamCode:   null,
-  team:       null,   // { team_id, team_name, current_tile, ... }
+  channelId:  null,   // the logged-in team's channel_id (or ADMIN_CODE)
+  team:       null,   // { team_id, team_name, current_tile }
   isAdmin:    false,
-  boardData:  null,   // last fetched board snapshot
-  prevTiles:  {},     // team_id → previous current_tile (for change detection)
+  boardData:  null,
   pollTimer:  null
 };
 
-// ═══════════════════════════════════════════════════════
-//  API
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+//  API  — calls the Apps Script directly
+//  Using Content-Type: text/plain avoids CORS preflight
+// ══════════════════════════════════════════════════════
 
-async function apiPost(command, extra = {}) {
-  const body = {
-    web_secret: CONFIG.WEB_SECRET,
-    team_code:  state.teamCode,
-    command,
-    ...extra
-  };
-  const res = await fetch(`${CONFIG.CLOUDFLARE_URL}/web`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+async function appsScriptPost(payload) {
+  const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+    method:   "POST",
+    headers:  { "Content-Type": "text/plain;charset=utf-8" },
+    body:     JSON.stringify(payload),
+    redirect: "follow"
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
+// All team commands — channel_id can be overridden for admin targeting
+async function apiCommand(command, extra = {}) {
+  return appsScriptPost({
+    secret:     CONFIG.WEB_SECRET,
+    channel_id: state.channelId,
+    command,
+    ...extra                // extra can override channel_id for admin commands
+  });
+}
+
+// Board state — public GET endpoint, no secret needed
 async function apiFetchBoardState() {
-  const url = `${CONFIG.CLOUDFLARE_URL}/web?secret=${encodeURIComponent(CONFIG.WEB_SECRET)}&view=boardstate`;
-  const res = await fetch(url);
+  const res = await fetch(
+    `${CONFIG.APPS_SCRIPT_URL}?view=boarddata&cb=${Date.now()}`,
+    { redirect: "follow" }
+  );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 //  LOGIN / LOGOUT
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 
 async function login() {
   const input = document.getElementById("team-code-input");
   const code  = input.value.trim();
-  const errEl = document.getElementById("login-error");
+  if (!code) { showLoginError("Paste your channel ID."); return; }
 
-  if (!code) { showLoginError("Please enter your team code."); return; }
-  errEl.classList.add("hidden");
-  document.getElementById("login-btn").textContent = "Connecting…";
+  const btn = document.getElementById("login-btn");
+  btn.textContent = "Connecting…";
+  btn.disabled = true;
+  document.getElementById("login-error").classList.add("hidden");
 
   try {
+    // Admin shortcut — no server lookup needed
     if (code === CONFIG.ADMIN_CODE) {
-      // Admin login — no team lookup needed
-      state.teamCode = code;
-      state.isAdmin  = true;
-      state.team     = null;
+      state.channelId = code;
+      state.isAdmin   = true;
+      state.team      = null;
+      localStorage.setItem("hs_cid", code);
       enterGame();
       return;
     }
 
-    const result = await apiPost("login", { team_code: code });
+    // Validate by fetching board state and matching channel_id
+    const boardData = await apiFetchBoardState();
+    if (!boardData || !boardData.teams) throw new Error("Could not load board data.");
 
-    if (!result.success) {
-      showLoginError(result.message || "Invalid team code.");
+    const match = boardData.teams.find(t => String(t.channel_id).trim() === String(code).trim());
+    if (!match) {
+      showLoginError("Channel ID not recognised — check and try again.");
       return;
     }
 
-    state.teamCode = code;
-    state.isAdmin  = false;
-    state.team     = {
-      team_id:      result.team_id,
-      team_name:    result.team_name,
-      current_tile: result.current_tile
-    };
-
-    localStorage.setItem("hs_team_code", code);
+    state.channelId = code;
+    state.isAdmin   = false;
+    state.team      = { team_id: match.team_id, team_name: match.team_name, current_tile: match.current_tile };
+    state.boardData = boardData;
+    localStorage.setItem("hs_cid", code);
     enterGame();
 
   } catch (err) {
-    showLoginError("Could not reach server: " + err.message);
+    showLoginError("Error: " + err.message);
   } finally {
-    document.getElementById("login-btn").textContent = "Enter Game";
+    btn.textContent = "Enter Game";
+    btn.disabled = false;
   }
 }
 
@@ -110,12 +123,8 @@ function showLoginError(msg) {
 
 function logout() {
   clearInterval(state.pollTimer);
-  state.teamCode  = null;
-  state.team      = null;
-  state.isAdmin   = false;
-  state.boardData = null;
-  state.prevTiles = {};
-  localStorage.removeItem("hs_team_code");
+  Object.assign(state, { channelId: null, team: null, isAdmin: false, boardData: null, pollTimer: null });
+  localStorage.removeItem("hs_cid");
   document.getElementById("game-screen").classList.add("hidden");
   document.getElementById("login-screen").classList.remove("hidden");
   document.getElementById("team-code-input").value = "";
@@ -126,46 +135,42 @@ function enterGame() {
   document.getElementById("login-screen").classList.add("hidden");
   document.getElementById("game-screen").classList.remove("hidden");
 
-  // Header badges
   const nameBadge = document.getElementById("header-team-badge");
+
   if (state.isAdmin) {
-    nameBadge.textContent = "🛡️ Game Master";
+    nameBadge.textContent    = "🛡️ Game Master";
     nameBadge.style.borderColor = "#e67e22";
     document.getElementById("actions-section").classList.add("hidden");
     document.getElementById("task-section").classList.add("hidden");
     document.getElementById("admin-section").classList.remove("hidden");
   } else {
-    nameBadge.textContent = `${getTeamBullet(state.team.team_id)} ${state.team.team_name}`;
+    nameBadge.textContent    = `${getTeamBullet(state.team.team_id)} ${state.team.team_name}`;
     nameBadge.style.borderColor = TEAM_COLORS[state.team.team_id] || "#555";
   }
 
-  // Initial board load then start polling
+  addFeedEvent("sys", `Logged in as ${state.isAdmin ? "Game Master" : state.team.team_name}.`);
+
   refreshBoard().then(() => {
     state.pollTimer = setInterval(refreshBoard, 6000);
   });
-
-  addFeedEvent("sys", `Entered game as ${state.isAdmin ? "Game Master" : state.team.team_name}.`);
 }
 
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 //  BOARD POLLING & RENDERING
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 
 async function refreshBoard() {
   try {
     const data = await apiFetchBoardState();
     if (!data || !data.teams) return;
 
-    detectTeamMovements(data);
+    detectMovements(data);
     state.boardData = data;
 
-    // Keep our team object in sync with server state
+    // Keep local team state in sync
     if (state.team) {
-      const serverTeam = data.teams.find(t => Number(t.team_id) === Number(state.team.team_id));
-      if (serverTeam) {
-        state.team.current_tile = serverTeam.current_tile;
-        state.team.team_name    = serverTeam.team_name;
-      }
+      const srv = data.teams.find(t => Number(t.team_id) === Number(state.team.team_id));
+      if (srv) { state.team.current_tile = srv.current_tile; state.team.team_name = srv.team_name; }
     }
 
     renderBoard(data);
@@ -174,30 +179,29 @@ async function refreshBoard() {
     updateHeaderTile();
     if (state.isAdmin) populateAdminDropdown(data.teams);
 
-  } catch (_) { /* silent — don't spam the feed on network blip */ }
+  } catch (_) { /* silent on poll failure */ }
 }
 
-function detectTeamMovements(newData) {
+function detectMovements(newData) {
   if (!state.boardData) return;
   const prev = {};
-  state.boardData.teams.forEach(t => { prev[t.team_id] = t.current_tile; });
+  state.boardData.teams.forEach(t => { prev[t.team_id] = Number(t.current_tile); });
   newData.teams.forEach(t => {
-    if (prev[t.team_id] !== undefined && prev[t.team_id] !== t.current_tile) {
-      addFeedEvent("ok", `📍 ${t.team_name} moved: tile ${prev[t.team_id]} → tile ${t.current_tile}`);
+    const p = prev[t.team_id];
+    if (p !== undefined && p !== Number(t.current_tile)) {
+      addFeedEvent("ok", `📍 ${t.team_name} moved: tile ${p} → tile ${t.current_tile}`);
     }
   });
 }
 
-// Build the boustrophedon grid: returns 10×10 array of tile numbers
-// Row 0 = top visual row (tiles 91-100 or 100-91), row 9 = bottom (tiles 1-10)
+// Boustrophedon grid: row 0 = top visual row (tiles 91-100), row 9 = bottom (tiles 1-10)
 function buildGrid() {
   const grid = [];
   for (let vRow = 0; vRow < 10; vRow++) {
-    const tileRow = 9 - vRow; // 0 = tiles 1-10 (bottom), 9 = tiles 91-100 (top)
+    const tileRow = 9 - vRow;
     const row = [];
     for (let col = 0; col < 10; col++) {
-      const tileNum = tileRow * 10 + (tileRow % 2 === 0 ? col + 1 : 10 - col);
-      row.push(tileNum);
+      row.push(tileRow * 10 + (tileRow % 2 === 0 ? col + 1 : 10 - col));
     }
     grid.push(row);
   }
@@ -219,21 +223,18 @@ function renderBoard(data) {
   const myId   = state.team ? Number(state.team.team_id) : null;
   const myTile = state.team ? Number(state.team.current_tile) : null;
 
-  const grid    = buildGrid();
   const boardEl = document.getElementById("board-grid");
   boardEl.innerHTML = "";
 
-  grid.forEach(row => {
+  buildGrid().forEach(row => {
     row.forEach(tileNum => {
       const completedIds = (completedByTile[String(tileNum)] || []).map(Number);
       const cell = document.createElement("div");
       cell.className = "tile";
-      cell.dataset.tile = tileNum;
 
-      if (snakes[tileNum])       cell.classList.add("snake-head");
-      else if (RAT_TILES.has(tileNum)) cell.classList.add("rat-tile");
-
-      if (tileNum === myTile)                 cell.classList.add("my-tile");
+      if (snakes[tileNum])              cell.classList.add("snake-head");
+      else if (RAT_TILES.has(tileNum))  cell.classList.add("rat-tile");
+      if (tileNum === myTile)            cell.classList.add("my-tile");
       if (myId && completedIds.includes(myId)) cell.classList.add("done-by-me");
 
       // Tile number
@@ -242,21 +243,19 @@ function renderBoard(data) {
       numEl.textContent = tileNum;
       cell.appendChild(numEl);
 
-      // Badge (snake / rat)
+      // Icon badge (top-right)
       if (snakes[tileNum]) {
         const b = document.createElement("span");
-        b.className = "snake-badge";
-        b.textContent = "🐍";
+        b.className = "snake-badge"; b.textContent = "🐍";
         cell.appendChild(b);
       } else if (RAT_TILES.has(tileNum)) {
         const b = document.createElement("span");
-        b.className = "rat-badge";
-        b.textContent = "🐀";
+        b.className = "rat-badge"; b.textContent = "🐀";
         cell.appendChild(b);
       }
 
-      // Content (show 2 lines max, full on tooltip)
-      const content = tileContentMap[tileNum] || "";
+      // Task content
+      const content = (tileContentMap && tileContentMap[tileNum]) || "";
       if (content) {
         const cEl = document.createElement("div");
         cEl.className = "tile-content";
@@ -264,15 +263,14 @@ function renderBoard(data) {
         cell.appendChild(cEl);
       }
 
-      // Pawns
+      // Team pawns
       const teamsHere = teamsByTile[tileNum] || [];
       if (teamsHere.length) {
         const pawnsEl = document.createElement("div");
         pawnsEl.className = "tile-pawns";
         teamsHere.forEach(t => {
           const p = document.createElement("span");
-          p.className = "pawn";
-          p.title = t.team_name;
+          p.className = "pawn"; p.title = t.team_name;
           p.textContent = getTeamBullet(t.team_id);
           pawnsEl.appendChild(p);
         });
@@ -282,12 +280,12 @@ function renderBoard(data) {
       // Completion bar ▰▱
       const barEl = document.createElement("div");
       barEl.className = "completion-bar";
-      [1, 2, 3, 4].forEach(id => {
+      [1,2,3,4].forEach(id => {
         const dot = document.createElement("span");
         const done = completedIds.includes(id);
         dot.className = "comp-dot" + (done ? ` comp-done-${id}` : "");
         dot.textContent = "▰";
-        dot.title = `Team ${id}${done ? " ✓" : ""}`;
+        dot.title = done ? `Team ${id} ✓` : `Team ${id}`;
         barEl.appendChild(dot);
       });
       cell.appendChild(barEl);
@@ -295,12 +293,12 @@ function renderBoard(data) {
       // Hover tooltip
       const tip = document.createElement("div");
       tip.className = "tile-tooltip";
-      let tipText = `Tile ${tileNum}`;
-      if (content) tipText += `\n${content}`;
-      if (snakes[tileNum]) tipText += `\n🐍 Snake → tile ${snakes[tileNum]}`;
-      if (RAT_TILES.has(tileNum)) tipText += "\n🐀 Rat trap!";
-      if (teamsHere.length) tipText += "\n" + teamsHere.map(t => `${getTeamBullet(t.team_id)} ${t.team_name}`).join("  ");
-      tip.textContent = tipText;
+      let tipLines = [`Tile ${tileNum}`];
+      if (content) tipLines.push(content);
+      if (snakes[tileNum]) tipLines.push(`🐍 Snake → tile ${snakes[tileNum]}`);
+      if (RAT_TILES.has(tileNum)) tipLines.push("🐀 Rat trap!");
+      if (teamsHere.length) tipLines.push(teamsHere.map(t => `${getTeamBullet(t.team_id)} ${t.team_name}`).join("  "));
+      tip.textContent = tipLines.join("\n");
       cell.appendChild(tip);
 
       boardEl.appendChild(cell);
@@ -312,24 +310,13 @@ function renderTeamsList(teams) {
   const el = document.getElementById("teams-list");
   el.innerHTML = "";
   const myId = state.team ? Number(state.team.team_id) : null;
-
   teams.forEach(t => {
     const row = document.createElement("div");
     row.className = "team-row" + (Number(t.team_id) === myId ? " is-mine" : "");
-
-    const bullet = document.createElement("span");
-    bullet.className = "team-bullet";
-    bullet.textContent = getTeamBullet(t.team_id);
-
-    const name = document.createElement("span");
-    name.className = "team-name";
-    name.textContent = t.team_name;
-
-    const tile = document.createElement("span");
-    tile.className = "team-tile";
-    tile.textContent = t.current_tile > 0 ? `Tile ${t.current_tile}` : "Start";
-
-    row.append(bullet, name, tile);
+    row.innerHTML = `
+      <span class="team-bullet">${getTeamBullet(t.team_id)}</span>
+      <span class="team-name">${t.team_name}</span>
+      <span class="team-tile">${Number(t.current_tile) > 0 ? `Tile ${t.current_tile}` : "Start"}</span>`;
     el.appendChild(row);
   });
 }
@@ -340,20 +327,18 @@ function renderTaskBox(data) {
   const myTile = Number(state.team.current_tile);
 
   document.getElementById("task-tile").textContent =
-    myTile > 0 ? `Tile ${myTile}` : "Not on board yet";
+    myTile > 0 ? `Tile ${myTile}` : "Not on the board yet";
 
-  const content = (myTile > 0 && data.tileContentMap)
-    ? (data.tileContentMap[myTile] || "No task text found")
-    : "—";
+  const content = myTile > 0 ? ((data.tileContentMap || {})[myTile] || "No task text found") : "—";
   document.getElementById("task-desc").textContent = content;
 
-  const completed = (data.completedByTile[String(myTile)] || []).map(Number);
-  const isDone = completed.includes(myId);
+  const completedIds = ((data.completedByTile || {})[String(myTile)] || []).map(Number);
+  const isDone = completedIds.includes(myId);
   document.getElementById("task-status").textContent =
-    myTile === 0  ? "Roll to enter the board!" :
-    myTile === 100 ? "🏆 You won!" :
-    isDone        ? "✅ Completed — you can roll again!" :
-                    "⏳ Not completed yet — use Complete when done.";
+    myTile === 0   ? "Roll to enter the board!" :
+    myTile === 100 ? "🏆 You've won!" :
+    isDone         ? "✅ Completed — you can roll again!" :
+                     "⏳ Not completed yet. Use Complete when done.";
 }
 
 function updateHeaderTile() {
@@ -369,193 +354,149 @@ function populateAdminDropdown(teams) {
   sel.innerHTML = '<option value="">Select team…</option>';
   teams.forEach(t => {
     const opt = document.createElement("option");
-    opt.value = t.team_id;
-    opt.textContent = `${getTeamBullet(t.team_id)} ${t.team_name} (tile ${t.current_tile})`;
+    opt.value = t.channel_id;  // we send channel_id to the existing Apps Script handlers
+    opt.textContent = `${getTeamBullet(t.team_id)} ${t.team_name} — Tile ${t.current_tile}`;
     sel.appendChild(opt);
   });
   if (prev) sel.value = prev;
 }
 
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 //  PLAYER ACTIONS
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 
 async function doRoll() {
-  setActionLoading("🎲 Rolling…");
+  setActionResult("🎲 Rolling…");
   try {
-    const result = await apiPost("roll");
-    showActionResult(result.message || JSON.stringify(result));
-    if (result.success) {
-      addFeedEvent("ok", result.message);
-      refreshBoard();
-    } else {
-      addFeedEvent("err", result.message);
-    }
+    const result = await apiCommand("roll");
+    setActionResult(result.message || JSON.stringify(result));
+    addFeedEvent(result.success ? "ok" : "err", result.message || "Roll done.");
+    if (result.success) refreshBoard();
   } catch (err) {
-    showActionResult("❌ " + err.message);
+    setActionResult("❌ " + err.message);
     addFeedEvent("err", err.message);
   }
 }
 
 async function doComplete() {
   const proofUrl = document.getElementById("proof-input").value.trim();
-  if (!proofUrl) {
-    showActionResult("❌ Paste a proof URL first.");
-    return;
-  }
-  setActionLoading("✅ Submitting…");
+  if (!proofUrl) { setActionResult("❌ Paste a proof URL first."); return; }
+  setActionResult("✅ Submitting…");
   try {
-    const result = await apiPost("complete", { proof_url: proofUrl });
-    showActionResult(result.message || JSON.stringify(result));
-    if (result.success) {
-      document.getElementById("proof-input").value = "";
-      addFeedEvent("ok", result.message);
-      refreshBoard();
-    } else {
-      addFeedEvent("err", result.message);
-    }
+    const result = await apiCommand("complete", { proof_url: proofUrl });
+    setActionResult(result.message || JSON.stringify(result));
+    addFeedEvent(result.success ? "ok" : "err", result.message || "Complete done.");
+    if (result.success) { document.getElementById("proof-input").value = ""; refreshBoard(); }
   } catch (err) {
-    showActionResult("❌ " + err.message);
+    setActionResult("❌ " + err.message);
     addFeedEvent("err", err.message);
   }
 }
 
 async function doCurrent() {
-  setActionLoading("📍 Checking…");
+  setActionResult("📍 Checking…");
   try {
-    const result = await apiPost("current");
-    showActionResult(result.message || JSON.stringify(result));
+    const result = await apiCommand("current");
+    setActionResult(result.message || JSON.stringify(result));
   } catch (err) {
-    showActionResult("❌ " + err.message);
+    setActionResult("❌ " + err.message);
   }
 }
 
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 //  ADMIN ACTIONS
-// ═══════════════════════════════════════════════════════
+//  Override channel_id with the target team's channel_id
+//  (the existing Apps Script handlers use channel_id to find the team)
+// ══════════════════════════════════════════════════════
 
 async function doPunish() {
-  const targetId = document.getElementById("admin-target").value;
-  if (!targetId) { showActionResult("❌ Select a team first.", true); return; }
+  const targetChannelId = document.getElementById("admin-target").value;
+  if (!targetChannelId) { setActionResult("❌ Select a team first."); return; }
+  if (!confirm("Roll this team backwards as punishment?")) return;
 
-  if (!confirm(`Punish this team (roll them backwards)?`)) return;
-
-  setActionLoading("⏪ Punishing…", true);
+  setActionResult("⏪ Punishing…");
   try {
-    const result = await apiPost("punish", { target_team_id: Number(targetId) });
-    showActionResult(result.message || JSON.stringify(result), true);
-    if (result.success) { addFeedEvent("sys", result.message); refreshBoard(); }
-    else addFeedEvent("err", result.message);
+    const result = await apiCommand("punish", { channel_id: targetChannelId });
+    setActionResult(result.message || JSON.stringify(result));
+    addFeedEvent(result.success ? "sys" : "err", result.message || "Punish done.");
+    if (result.success) refreshBoard();
   } catch (err) {
-    showActionResult("❌ " + err.message, true);
+    setActionResult("❌ " + err.message);
     addFeedEvent("err", err.message);
   }
 }
 
 async function doMove() {
-  const targetId = document.getElementById("admin-target").value;
-  const tile     = Number(document.getElementById("admin-tile").value);
-
-  if (!targetId)                       { showActionResult("❌ Select a team first.", true); return; }
-  if (!tile || tile < 1 || tile > 100) { showActionResult("❌ Enter a tile between 1 and 100.", true); return; }
-
+  const targetChannelId = document.getElementById("admin-target").value;
+  const tile = Number(document.getElementById("admin-tile").value);
+  if (!targetChannelId)               { setActionResult("❌ Select a team first."); return; }
+  if (!tile || tile < 1 || tile > 100){ setActionResult("❌ Enter a tile between 1 and 100."); return; }
   if (!confirm(`Move team to tile ${tile}?`)) return;
 
-  setActionLoading("➡️ Moving…", true);
+  setActionResult("➡️ Moving…");
   try {
-    const result = await apiPost("move", { target_team_id: Number(targetId), tile });
-    showActionResult(result.message || JSON.stringify(result), true);
-    if (result.success) { addFeedEvent("sys", result.message); refreshBoard(); }
-    else addFeedEvent("err", result.message);
+    const result = await apiCommand("move", { channel_id: targetChannelId, tile });
+    setActionResult(result.message || JSON.stringify(result));
+    addFeedEvent(result.success ? "sys" : "err", result.message || "Move done.");
+    if (result.success) refreshBoard();
   } catch (err) {
-    showActionResult("❌ " + err.message, true);
+    setActionResult("❌ " + err.message);
     addFeedEvent("err", err.message);
   }
 }
 
 async function doReset() {
-  if (!confirm("⚠️ This will RESET the entire game for all teams. Are you sure?")) return;
+  if (!confirm("⚠️ Reset the ENTIRE game for all teams?")) return;
   if (!confirm("Really? This cannot be undone.")) return;
 
-  setActionLoading("🔄 Resetting…", true);
+  setActionResult("🔄 Resetting…");
   try {
-    const result = await apiPost("reset");
-    showActionResult(result.message || JSON.stringify(result), true);
-    if (result.success) { addFeedEvent("sys", "🔄 Game reset by Game Master."); refreshBoard(); }
-    else addFeedEvent("err", result.message);
+    // Reset doesn't need a channel_id — send with a dummy value, Apps Script ignores it for reset
+    const result = await appsScriptPost({ secret: CONFIG.WEB_SECRET, command: "reset" });
+    setActionResult(result.message || JSON.stringify(result));
+    addFeedEvent(result.success ? "sys" : "err", result.success ? "🔄 Game reset." : result.message);
+    if (result.success) refreshBoard();
   } catch (err) {
-    showActionResult("❌ " + err.message, true);
+    setActionResult("❌ " + err.message);
     addFeedEvent("err", err.message);
   }
 }
 
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 //  UI HELPERS
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 
-function setActionLoading(text, isAdmin = false) {
-  const el = isAdmin
-    ? document.getElementById("admin-section").querySelector(".action-result") || document.getElementById("action-result")
-    : document.getElementById("action-result");
-  el.classList.remove("hidden");
-  el.textContent = text;
-}
-
-function showActionResult(text, isAdmin = false) {
+function setActionResult(text) {
   const el = document.getElementById("action-result");
-  el.classList.remove("hidden");
   el.textContent = text;
+  el.classList.remove("hidden");
 }
-
-// ── Event Feed ──
 
 function addFeedEvent(type, message) {
+  if (!message) return;
   const feed = document.getElementById("feed-items");
   const item = document.createElement("div");
   item.className = `feed-item feed-${type}`;
-
-  const time = document.createElement("span");
-  time.className = "feed-time";
-  time.textContent = new Date().toLocaleTimeString();
-
-  const msg = document.createElement("span");
-  msg.className = "feed-msg";
-  msg.textContent = message;
-
-  item.append(time, msg);
+  item.innerHTML = `<span class="feed-time">${new Date().toLocaleTimeString()}</span><span class="feed-msg">${message}</span>`;
   feed.prepend(item);
-
-  // Keep feed from growing unbounded
-  while (feed.children.length > 80) {
-    feed.removeChild(feed.lastChild);
-  }
+  while (feed.children.length > 80) feed.removeChild(feed.lastChild);
 }
 
-function clearFeed() {
-  document.getElementById("feed-items").innerHTML = "";
-}
+function clearFeed() { document.getElementById("feed-items").innerHTML = ""; }
 
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 //  INIT
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("login-btn").addEventListener("click", login);
   document.getElementById("logout-btn").addEventListener("click", logout);
-
   document.getElementById("team-code-input").addEventListener("keydown", e => {
     if (e.key === "Enter") login();
   });
 
   // Auto-login from localStorage
-  const saved = localStorage.getItem("hs_team_code");
+  const saved = localStorage.getItem("hs_cid");
   if (saved) {
     document.getElementById("team-code-input").value = saved;
     login();
