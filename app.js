@@ -6,7 +6,7 @@ const CONFIG = {
   APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbw0ZAhadYwG1z6sYczshDN5AAG9s-NQtFbDOUFkmaOwT6qEn5Qxm6FAhUOt0zMbrb7V7A/exec",
 
   // The WEB_APP_SECRET value from line 7 of your Apps Script
-  WEB_SECRET: "place",
+  WEB_SECRET: "placeholder",
 
   // Whoever types this on the login screen gets Game Master controls
   ADMIN_CODE: "gamemaster",
