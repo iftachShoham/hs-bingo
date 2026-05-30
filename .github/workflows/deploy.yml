@@ -1,0 +1,24 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inject secrets into config
+        run: |
+          sed -i "s|%%APPS_SCRIPT_URL%%|${{ secrets.APPS_SCRIPT_URL }}|g" app.js
+          sed -i "s|%%WEB_SECRET%%|${{ secrets.WEB_SECRET }}|g" app.js
+          sed -i "s|%%ADMIN_CODE%%|${{ secrets.ADMIN_CODE }}|g" app.js
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          exclude_assets: '.github,*.txt,*.md'

@@ -3,13 +3,13 @@
 // ══════════════════════════════════════════════════════
 const CONFIG = {
   // Your Google Apps Script web app URL
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbw0ZAhadYwG1z6sYczshDN5AAG9s-NQtFbDOUFkmaOwT6qEn5Qxm6FAhUOt0zMbrb7V7A/exec",
+  APPS_SCRIPT_URL: "%%APPS_SCRIPT_URL%%",
 
   // The WEB_APP_SECRET value from line 7 of your Apps Script
-  WEB_SECRET: "placeholder",
+  WEB_SECRET: "%%WEB_SECRET%%",
 
   // Whoever types this on the login screen gets Game Master controls
-  ADMIN_CODE: "gamemaster",
+  ADMIN_CODE: "%%ADMIN_CODE%%",
 
 };
 
