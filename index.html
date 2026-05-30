@@ -15,6 +15,7 @@
       <h1>High Society</h1>
       <p class="login-sub">Snakes &amp; Rats — Team Portal</p>
       <input id="team-code-input" type="text" placeholder="Paste your Discord channel ID" autocomplete="off" spellcheck="false" />
+      <input id="player-name-input" type="text" placeholder="Your name (optional)" autocomplete="off" spellcheck="false" style="margin-top:8px;" />
       <button id="login-btn">Enter Game</button>
       <p id="login-error" class="error-msg hidden"></p>
     </div>
@@ -58,17 +59,33 @@
           </div>
         </section>
 
-        <section class="panel-section" id="actions-section">
-          <h3>⚡ Actions</h3>
-          <div id="action-buttons">
-            <button class="btn-action btn-roll" id="btn-roll" onclick="doRoll()">🎲 Roll Dice</button>
-            <button class="btn-action btn-info"  onclick="doCurrent()">📍 Check Current</button>
-            <div class="proof-row">
-              <input id="proof-input" type="text" placeholder="Paste proof URL…" />
-              <button class="btn-action btn-complete" onclick="doComplete()">✅ Complete Tile</button>
+        <section class="panel-section" id="roll-section">
+          <h3>🎲 Roll Dice</h3>
+          <button class="btn-action btn-roll" id="btn-roll" onclick="doRoll()">🎲 Roll Dice</button>
+          <div id="roll-result" class="action-result hidden"></div>
+        </section>
+
+        <section class="panel-section" id="complete-section">
+          <h3>✅ Complete Task</h3>
+
+          <!-- Proof zone: drag-drop / paste / camera / URL -->
+          <div id="proof-zone" class="proof-zone">
+            <div id="proof-preview" class="proof-preview hidden">
+              <img id="proof-img" alt="proof preview" />
+              <button class="proof-clear-btn" onclick="clearProof()">✕</button>
+            </div>
+            <div id="proof-inputs">
+              <label for="proof-file" class="proof-file-label">
+                <span id="proof-file-icon">📷</span> Photo / File
+                <input id="proof-file" type="file" accept="image/*" />
+              </label>
+              <input id="proof-url" type="text" placeholder="or paste a URL…" autocomplete="off" />
+              <p class="proof-hint">Drag &amp; drop or paste an image here</p>
             </div>
           </div>
-          <div id="action-result" class="action-result hidden"></div>
+
+          <button class="btn-action btn-complete" id="btn-complete" onclick="doComplete()">✅ Complete Task</button>
+          <div id="complete-result" class="action-result hidden"></div>
         </section>
 
         <section class="panel-section" id="teams-section">

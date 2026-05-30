@@ -403,12 +403,20 @@ body {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: filter 0.15s, transform 0.1s;
+  transition: filter 0.15s, transform 0.1s, opacity 0.15s;
   text-align: left;
 }
 
-.btn-action:hover  { filter: brightness(1.15); }
-.btn-action:active { transform: scale(0.98); }
+.btn-action:hover:not(:disabled)  { filter: brightness(1.15); }
+.btn-action:active:not(:disabled) { transform: scale(0.98); }
+
+.btn-action:disabled,
+.btn-action.busy {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
+  transform: none;
+}
 
 .btn-roll     { background: var(--accent); color: #fff; }
 .btn-complete { background: var(--green);  color: #fff; }
@@ -416,13 +424,44 @@ body {
 .btn-admin    { background: var(--orange); color: #fff; }
 .btn-reset    { background: var(--red);   color: #fff; margin-top: 4px; }
 
-.proof-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+/* ── Proof zone ── */
+.proof-zone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  transition: border-color 0.2s, background 0.2s;
 }
 
-.proof-row input {
+.proof-zone.drag-over {
+  border-color: var(--green);
+  background: rgba(39, 174, 96, 0.08);
+}
+
+#proof-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.proof-file-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text);
+  transition: border-color 0.2s;
+}
+.proof-file-label:hover { border-color: var(--accent); }
+.proof-file-label input[type="file"] { display: none; }
+
+#proof-url {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -430,9 +469,47 @@ body {
   font-size: 13px;
   color: var(--text);
   outline: none;
+  width: 100%;
   transition: border-color 0.2s;
 }
-.proof-row input:focus { border-color: var(--green); }
+#proof-url:focus { border-color: var(--green); }
+
+.proof-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.proof-preview {
+  position: relative;
+  text-align: center;
+}
+
+.proof-preview img {
+  max-width: 100%;
+  max-height: 160px;
+  border-radius: 6px;
+  object-fit: contain;
+  border: 1px solid var(--border);
+}
+
+.proof-clear-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 
 /* Action result */
@@ -705,8 +782,10 @@ body {
 
   /* Bigger tap targets */
   .btn-action { padding: 16px 14px; font-size: 16px; border-radius: 10px; }
-  .proof-row input { padding: 14px 12px; font-size: 15px; }
+  #proof-url  { padding: 14px 12px; font-size: 15px; }
+  .proof-file-label { padding: 14px 12px; font-size: 15px; }
   .team-row  { padding: 12px 12px; font-size: 14px; }
+  .proof-preview img { max-height: 200px; }
 
   /* ── Log tab: event feed fills the space ── */
   #event-feed { display: none; height: auto; }

@@ -11,6 +11,9 @@ const CONFIG = {
   // Whoever types this on the login screen gets Game Master controls
   ADMIN_CODE: "gamemaster",
 
+  // Free API key from https://api.imgbb.com — needed for image proof uploads
+  IMGBB_KEY: "10ab068f4a22b9c256c83eeddfcbfd75",
+
 };
 
 // ── RAT tiles (must match the Apps Script constant) ──
@@ -28,7 +31,9 @@ const state = {
   isAdmin:    false,
   boardData:  null,
   pollTimer:  null,
-  activeTab:  'board'
+  activeTab:  'board',
+  playerName: null,   // optional display name entered at login
+  proofFile:  null,   // pending image File for proof upload
 };
 
 // ══════════════════════════════════════════════════════
@@ -72,6 +77,9 @@ async function login() {
   const code  = input.value.trim();
   if (!code) { showLoginError("Paste your channel ID."); return; }
 
+  const nameInput = document.getElementById("player-name-input");
+  const playerName = nameInput ? nameInput.value.trim() : "";
+
   const btn = document.getElementById("login-btn");
   btn.textContent = "Connecting…";
   btn.disabled = true;
@@ -80,10 +88,12 @@ async function login() {
   try {
     // Admin shortcut — no server lookup needed
     if (code === CONFIG.ADMIN_CODE) {
-      state.channelId = code;
-      state.isAdmin   = true;
-      state.team      = null;
+      state.channelId  = code;
+      state.isAdmin    = true;
+      state.team       = null;
+      state.playerName = playerName || null;
       localStorage.setItem("hs_cid", code);
+      if (playerName) localStorage.setItem("hs_player", playerName);
       enterGame();
       return;
     }
@@ -98,11 +108,13 @@ async function login() {
       return;
     }
 
-    state.channelId = code;
-    state.isAdmin   = false;
-    state.team      = { team_id: match.team_id, team_name: match.team_name, current_tile: match.current_tile };
-    state.boardData = boardData;
+    state.channelId  = code;
+    state.isAdmin    = false;
+    state.team       = { team_id: match.team_id, team_name: match.team_name, current_tile: match.current_tile };
+    state.boardData  = boardData;
+    state.playerName = playerName || null;
     localStorage.setItem("hs_cid", code);
+    if (playerName) localStorage.setItem("hs_player", playerName);
     enterGame();
 
   } catch (err) {
@@ -121,12 +133,14 @@ function showLoginError(msg) {
 
 function logout() {
   clearInterval(state.pollTimer);
-  Object.assign(state, { channelId: null, team: null, isAdmin: false, boardData: null, pollTimer: null });
+  Object.assign(state, { channelId: null, team: null, isAdmin: false, boardData: null, pollTimer: null, playerName: null, proofFile: null });
   localStorage.removeItem("hs_cid");
   document.getElementById("game-screen").classList.add("hidden");
   document.getElementById("login-screen").classList.remove("hidden");
   document.getElementById("team-code-input").value = "";
-  document.getElementById("action-result").classList.add("hidden");
+  document.getElementById("roll-result").classList.add("hidden");
+  document.getElementById("complete-result").classList.add("hidden");
+  clearProof();
 }
 
 function enterGame() {
@@ -136,17 +150,22 @@ function enterGame() {
   const nameBadge = document.getElementById("header-team-badge");
 
   if (state.isAdmin) {
-    nameBadge.textContent    = "🛡️ Game Master";
+    nameBadge.textContent    = state.playerName ? `🛡️ ${state.playerName}` : "🛡️ Game Master";
     nameBadge.style.borderColor = "#e67e22";
-    document.getElementById("actions-section").classList.add("hidden");
+    document.getElementById("roll-section").classList.add("hidden");
+    document.getElementById("complete-section").classList.add("hidden");
     document.getElementById("task-section").classList.add("hidden");
     document.getElementById("admin-section").classList.remove("hidden");
   } else {
-    nameBadge.textContent    = `${getTeamBullet(state.team.team_id)} ${state.team.team_name}`;
+    const nameLabel = state.playerName ? ` · ${state.playerName}` : "";
+    nameBadge.textContent    = `${getTeamBullet(state.team.team_id)} ${state.team.team_name}${nameLabel}`;
     nameBadge.style.borderColor = TEAM_COLORS[state.team.team_id] || "#555";
   }
 
-  addFeedEvent("sys", `Logged in as ${state.isAdmin ? "Game Master" : state.team.team_name}.`);
+  const whoLabel = state.playerName
+    ? `${state.playerName} (${state.isAdmin ? "Game Master" : state.team.team_name})`
+    : (state.isAdmin ? "Game Master" : state.team.team_name);
+  addFeedEvent("sys", `Logged in as ${whoLabel}.`);
 
   // On mobile, update Play tab label for admin
   if (state.isAdmin) {
@@ -470,41 +489,134 @@ function populateAdminDropdown(teams) {
 // ══════════════════════════════════════════════════════
 
 async function doRoll() {
-  setActionResult("🎲 Rolling…");
+  const btn = document.getElementById("btn-roll");
+  setBusy(btn, true, "🎲 Rolling…");
+  setRollResult("🎲 Rolling…");
   try {
     const result = await apiCommand("roll");
-    setActionResult(result.message || JSON.stringify(result));
+    setRollResult(result.message || JSON.stringify(result));
     addFeedEvent(result.success ? "ok" : "err", result.message || "Roll done.");
     if (result.success) refreshBoard();
   } catch (err) {
-    setActionResult("❌ " + err.message);
+    setRollResult("❌ " + err.message);
     addFeedEvent("err", err.message);
+  } finally {
+    setBusy(btn, false, "🎲 Roll Dice");
   }
 }
 
 async function doComplete() {
-  const proofUrl = document.getElementById("proof-input").value.trim();
-  if (!proofUrl) { setActionResult("❌ Paste a proof URL first."); return; }
-  setActionResult("✅ Submitting…");
+  const proofUrl = document.getElementById("proof-url").value.trim();
+  const hasFile  = !!state.proofFile;
+
+  if (!hasFile && !proofUrl) {
+    setCompleteResult("❌ Add a photo or paste a proof URL first.");
+    return;
+  }
+
+  const btn = document.getElementById("btn-complete");
+  setBusy(btn, true, "✅ Submitting…");
+  setCompleteResult("✅ Submitting…");
+
   try {
-    const result = await apiCommand("complete", { proof_url: proofUrl });
-    setActionResult(result.message || JSON.stringify(result));
-    addFeedEvent(result.success ? "ok" : "err", result.message || "Complete done.");
-    if (result.success) { document.getElementById("proof-input").value = ""; refreshBoard(); }
+    let finalUrl = proofUrl;
+
+    if (hasFile) {
+      setCompleteResult("📤 Uploading image…");
+      finalUrl = await uploadProofImage(state.proofFile);
+    }
+
+    const result = await apiCommand("complete", { proof_url: finalUrl });
+    setCompleteResult(result.message || JSON.stringify(result));
+
+    const who = state.playerName ? `${state.playerName} · ` : "";
+    addFeedEvent(result.success ? "ok" : "err", `${who}${result.message || "Complete done."}`);
+
+    if (result.success) {
+      clearProof();
+      document.getElementById("proof-url").value = "";
+      refreshBoard();
+    }
   } catch (err) {
-    setActionResult("❌ " + err.message);
+    setCompleteResult("❌ " + err.message);
     addFeedEvent("err", err.message);
+  } finally {
+    setBusy(btn, false, "✅ Complete Task");
   }
 }
 
-async function doCurrent() {
-  setActionResult("📍 Checking…");
-  try {
-    const result = await apiCommand("current");
-    setActionResult(result.message || JSON.stringify(result));
-  } catch (err) {
-    setActionResult("❌ " + err.message);
+// Upload an image File to ImgBB and return the hosted URL
+async function uploadProofImage(file) {
+  const key = CONFIG.IMGBB_KEY;
+  if (!key || key.startsWith("%%")) {
+    throw new Error("Image upload needs an IMGBB_KEY secret — add it in GitHub Secrets or paste a URL instead.");
   }
+
+  const base64 = await fileToBase64(file);
+  const body   = new FormData();
+  body.append("key",   key);
+  body.append("image", base64.split(",")[1]);
+
+  const res  = await fetch("https://api.imgbb.com/1/upload", { method: "POST", body });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error?.message || "ImgBB upload failed");
+  return json.data.url;
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Resize image via canvas before upload (max 1280px, keeps aspect ratio)
+function resizeImage(file, maxPx = 1280, quality = 0.85) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale  = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", quality);
+    };
+    img.src = url;
+  });
+}
+
+function setProofFile(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  resizeImage(file).then(resized => {
+    state.proofFile = resized;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById("proof-img").src = e.target.result;
+      document.getElementById("proof-preview").classList.remove("hidden");
+      document.getElementById("proof-inputs").classList.add("hidden");
+    };
+    reader.readAsDataURL(resized);
+  });
+}
+
+function clearProof() {
+  state.proofFile = null;
+  document.getElementById("proof-preview").classList.add("hidden");
+  document.getElementById("proof-inputs").classList.remove("hidden");
+  document.getElementById("proof-img").src = "";
+  const fi = document.getElementById("proof-file");
+  if (fi) fi.value = "";
+}
+
+function setBusy(btn, busy, label) {
+  btn.disabled = busy;
+  btn.classList.toggle("busy", busy);
+  btn.textContent = label;
 }
 
 // ══════════════════════════════════════════════════════
@@ -569,10 +681,21 @@ async function doReset() {
 //  UI HELPERS
 // ══════════════════════════════════════════════════════
 
-function setActionResult(text) {
-  const el = document.getElementById("action-result");
+function setRollResult(text) {
+  const el = document.getElementById("roll-result");
   el.textContent = text;
   el.classList.remove("hidden");
+}
+
+function setCompleteResult(text) {
+  const el = document.getElementById("complete-result");
+  el.textContent = text;
+  el.classList.remove("hidden");
+}
+
+function setActionResult(text) {
+  setRollResult(text);
+  setCompleteResult(text);
 }
 
 function addFeedEvent(type, message) {
@@ -629,7 +752,7 @@ function _applyMobileTab(name) {
   );
 
   const sectionsForTab = {
-    play:  ['task-section', 'actions-section', 'admin-section'],
+    play:  ['task-section', 'roll-section', 'complete-section', 'admin-section'],
     teams: ['teams-section', 'admin-section']
   };
 
@@ -698,6 +821,33 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("logout-btn").addEventListener("click", logout);
   document.getElementById("team-code-input").addEventListener("keydown", e => {
     if (e.key === "Enter") login();
+  });
+
+  // Pre-fill saved player name
+  const savedName = localStorage.getItem("hs_player");
+  if (savedName) document.getElementById("player-name-input").value = savedName;
+
+  // File input → preview
+  document.getElementById("proof-file").addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (file) setProofFile(file);
+  });
+
+  // Drag-drop on proof zone
+  const zone = document.getElementById("proof-zone");
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("drag-over"); });
+  zone.addEventListener("dragleave", ()  => zone.classList.remove("drag-over"));
+  zone.addEventListener("drop", e => {
+    e.preventDefault();
+    zone.classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file) setProofFile(file);
+  });
+
+  // Paste image anywhere on the page
+  document.addEventListener("paste", e => {
+    const item = Array.from(e.clipboardData.items).find(i => i.type.startsWith("image/"));
+    if (item) setProofFile(item.getAsFile());
   });
 
   // Auto-login from localStorage
