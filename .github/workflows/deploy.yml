@@ -21,6 +21,7 @@ jobs:
           sed -i "s|%%APPS_SCRIPT_URL%%|${{ secrets.APPS_SCRIPT_URL }}|g" app.js
           sed -i "s|%%WEB_SECRET%%|${{ secrets.WEB_SECRET }}|g" app.js
           sed -i "s|%%ADMIN_CODE%%|${{ secrets.ADMIN_CODE }}|g" app.js
+          sed -i "s|%%IMGBB_KEY%%|${{ secrets.IMGBB_KEY }}|g" app.js
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
