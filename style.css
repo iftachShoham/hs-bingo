@@ -392,7 +392,7 @@ body {
 
 .tile-num {
   font-weight: 700;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--text-dim);
   line-height: 1;
 }
@@ -1079,7 +1079,7 @@ body {
   #board-legend { display: none; }
 
   .tile { padding: 2px; border-radius: 0; }
-  .tile-num { font-size: 9px; }
+  .tile-num { font-size: 11px; }
   .tile-content { font-size: 7px; -webkit-line-clamp: 1; }
   .pawn { font-size: 10px; }
   .snake-badge { font-size: 11px; top: 0; right: 1px; }

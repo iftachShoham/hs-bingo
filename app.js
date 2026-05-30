@@ -939,7 +939,7 @@ function drawSnakeShape(g, hx, hy, tx, ty, pal, cellSize, idx) {
   const dist = Math.sqrt(dx * dx + dy * dy);
   if (dist < 2) return;
 
-  const thickness = cellSize * 0.40;
+  const thickness = cellSize * 0.16;
 
   // Perpendicular unit vector — alternating side per snake gives space between them
   const sign = (idx % 2 === 0) ? 1 : -1;
