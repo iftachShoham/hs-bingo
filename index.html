@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>High Society — Snakes &amp; Rats</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Login Screen ── -->
+  <div id="login-screen">
+    <div class="login-box">
+      <div class="login-logo">🐀</div>
+      <h1>High Society</h1>
+      <p class="login-sub">Snakes &amp; Rats — Team Portal</p>
+      <input id="team-code-input" type="text" placeholder="Enter your team code" autocomplete="off" spellcheck="false" />
+      <button id="login-btn">Enter Game</button>
+      <p id="login-error" class="error-msg hidden"></p>
+    </div>
+  </div>
+
+  <!-- ── Game Screen ── -->
+  <div id="game-screen" class="hidden">
+
+    <header id="game-header">
+      <span id="header-title">🐀 High Society — Snakes &amp; Rats</span>
+      <div id="header-right">
+        <span id="header-team-badge" class="badge"></span>
+        <span id="header-tile-badge" class="badge badge-tile"></span>
+        <span id="poll-dot" title="Live updates active">●</span>
+        <button class="btn-ghost" id="logout-btn">Logout</button>
+      </div>
+    </header>
+
+    <div id="main-layout">
+
+      <!-- ── Board ── -->
+      <div id="board-wrapper">
+        <div id="board-grid"></div>
+        <div id="board-legend">
+          <div class="leg-row"><span class="leg-swatch snake-swatch"></span>Snake head</div>
+          <div class="leg-row"><span class="leg-swatch rat-swatch"></span>Rat trap</div>
+          <div class="leg-row"><span class="leg-swatch my-swatch"></span>Your tile</div>
+          <div class="leg-row"><span class="leg-swatch done-swatch"></span>You completed</div>
+        </div>
+      </div>
+
+      <!-- ── Side Panel ── -->
+      <aside id="side-panel">
+
+        <section class="panel-section" id="task-section">
+          <h3>📍 Current Task</h3>
+          <div id="task-box">
+            <div id="task-tile">—</div>
+            <div id="task-desc">—</div>
+            <div id="task-status">—</div>
+          </div>
+        </section>
+
+        <section class="panel-section" id="actions-section">
+          <h3>⚡ Actions</h3>
+          <div id="action-buttons">
+            <button class="btn-action btn-roll" id="btn-roll" onclick="doRoll()">🎲 Roll Dice</button>
+            <button class="btn-action btn-info"  onclick="doCurrent()">📍 Check Current</button>
+            <div class="proof-row">
+              <input id="proof-input" type="text" placeholder="Paste proof URL (image / link)" />
+              <button class="btn-action btn-complete" onclick="doComplete()">✅ Complete Tile</button>
+            </div>
+          </div>
+          <div id="action-result" class="action-result hidden"></div>
+        </section>
+
+        <section class="panel-section" id="teams-section">
+          <h3>🏆 All Teams</h3>
+          <div id="teams-list"></div>
+        </section>
+
+        <section class="panel-section hidden" id="admin-section">
+          <h3>🛡️ Game Master</h3>
+          <div id="admin-controls">
+            <label class="admin-label">Target team</label>
+            <select id="admin-target" class="admin-select">
+              <option value="">Select team…</option>
+            </select>
+            <button class="btn-action btn-admin" onclick="doPunish()">⏪ Punish (roll back)</button>
+            <div class="admin-move-row">
+              <input id="admin-tile" type="number" min="1" max="100" placeholder="Tile 1-100" class="admin-tile-input" />
+              <button class="btn-action btn-admin" onclick="doMove()">➡️ Move to tile</button>
+            </div>
+            <button class="btn-action btn-reset" onclick="doReset()">🔄 Reset Entire Game</button>
+          </div>
+        </section>
+
+      </aside>
+    </div>
+
+    <!-- ── Event Feed ── -->
+    <div id="event-feed">
+      <div id="feed-header">
+        <span>📋 Events</span>
+        <button class="btn-ghost" onclick="clearFeed()">Clear</button>
+      </div>
+      <div id="feed-items"></div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
