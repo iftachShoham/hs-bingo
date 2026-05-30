@@ -160,14 +160,29 @@ function enterGame() {
 // ══════════════════════════════════════════════════════
 
 async function refreshBoard() {
+  // Catch config mistake early so user sees a clear message
+  if (CONFIG.APPS_SCRIPT_URL.includes("YOUR_DEPLOYMENT_ID")) {
+    showBoardError("⚙️ APPS_SCRIPT_URL is still the placeholder.\nOpen app.js and paste your real Apps Script URL on line 6.");
+    return;
+  }
+
   try {
     const data = await apiFetchBoardState();
-    if (!data || !data.teams) return;
+
+    if (!data || !data.teams) {
+      showBoardError("⚠️ Board data returned empty. Check your Apps Script deployment.");
+      return;
+    }
+
+    // Clear any previous error
+    const boardEl = document.getElementById("board-grid");
+    boardEl.style.removeProperty("display");
+    const errEl = document.getElementById("board-error");
+    if (errEl) errEl.remove();
 
     detectMovements(data);
     state.boardData = data;
 
-    // Keep local team state in sync
     if (state.team) {
       const srv = data.teams.find(t => Number(t.team_id) === Number(state.team.team_id));
       if (srv) { state.team.current_tile = srv.current_tile; state.team.team_name = srv.team_name; }
@@ -179,7 +194,24 @@ async function refreshBoard() {
     updateHeaderTile();
     if (state.isAdmin) populateAdminDropdown(data.teams);
 
-  } catch (_) { /* silent on poll failure */ }
+  } catch (err) {
+    showBoardError(`❌ Could not load board: ${err.message}\n\nCheck your APPS_SCRIPT_URL in app.js.`);
+  }
+}
+
+function showBoardError(msg) {
+  const wrapper = document.getElementById("board-wrapper");
+  let errEl = document.getElementById("board-error");
+  if (!errEl) {
+    errEl = document.createElement("div");
+    errEl.id = "board-error";
+    errEl.style.cssText = "background:#2a1a1a;border:1px solid #6b2020;border-radius:8px;padding:20px 24px;font-size:13px;white-space:pre-line;line-height:1.6;color:#e0a0a0;margin-top:8px;";
+    wrapper.appendChild(errEl);
+  }
+  errEl.textContent = msg;
+  // Hide the grid so the error is prominent
+  document.getElementById("board-grid").style.display = "none";
+  addFeedEvent("err", msg.split("\n")[0]);
 }
 
 function detectMovements(newData) {
