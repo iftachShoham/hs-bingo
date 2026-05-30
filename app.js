@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════════════════
 const CONFIG = {
   // Your Google Apps Script web app URL
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbw0ZAhadYwG1z6sYczshDN5AAG9s-NQtFbDOUFkmaOwT6qEn5Qxm6FAhUOt0zMbrb7V7A/exec",
 
   // The WEB_APP_SECRET value from line 7 of your Apps Script
   WEB_SECRET: "placeholder",
