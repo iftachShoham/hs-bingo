@@ -1,0 +1,1 @@
+# hsBingo.github.io
