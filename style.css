@@ -544,27 +544,162 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-/* ── Responsive ── */
+/* ── Mobile Tab Bar (hidden on desktop) ── */
+#mobile-tabs { display: none; }
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  border-top: 2px solid transparent;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 8px 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab-btn:active { background: var(--surface2); }
+.tab-btn.active { color: var(--accent); border-top-color: var(--accent); }
+.tab-icon  { font-size: 22px; line-height: 1.2; }
+.tab-label { line-height: 1; }
+
+/* ── Tile Info Modal ── */
+#tile-modal {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+#tile-modal.hidden { display: none; }
+
+#tile-modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 20px 18px;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+}
+
+#tile-modal-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+#tile-modal-body {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+#tile-modal-body p { margin-bottom: 6px; }
+#tile-modal-body p:last-child { margin-bottom: 0; }
+
+/* ── Mobile Layout ── */
 @media (max-width: 860px) {
-  #main-layout { flex-direction: column; overflow-y: auto; }
-
-  #board-wrapper {
-    align-items: center;
-    padding: 10px;
-  }
-
-  #board-grid {
-    max-width: min(90vw, 480px);
-    max-height: min(90vw, 480px);
-  }
-
-  #side-panel {
-    width: 100%;
-    min-width: unset;
-    border-left: none;
+  /* Show tab bar */
+  #mobile-tabs {
+    display: flex;
+    height: 58px;
+    background: var(--surface);
     border-top: 1px solid var(--border);
-    overflow-y: visible;
+    flex-shrink: 0;
   }
 
-  #event-feed { height: 100px; }
+  /* Fixed full-height game screen */
+  #game-screen {
+    height: 100dvh;
+    height: 100vh;
+  }
+
+  /* Compact header */
+  #game-header { padding: 8px 12px; }
+  #header-title { font-size: 13px; }
+  .badge { font-size: 11px; padding: 3px 8px; }
+  #poll-dot { font-size: 14px; }
+
+  /* Main layout: positioning context for absolute children */
+  #main-layout {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── Board tab ── */
+  #board-wrapper {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    overflow: hidden;
+  }
+  #board-wrapper.m-active { display: flex; }
+
+  /* Board grid fills wrapper on mobile */
+  #board-grid {
+    height: auto;
+    flex: 1;
+    min-height: 0;
+    max-height: 100%;
+    max-width: 100%;
+    aspect-ratio: 1 / 1;
+  }
+
+  #board-legend { display: none; }
+
+  /* Slightly larger tile text at small sizes */
+  .tile { padding: 2px; border-radius: 3px; }
+  .tile-num { font-size: 9px; }
+  .tile-content { font-size: 7px; -webkit-line-clamp: 1; }
+  .pawn { font-size: 10px; }
+  .snake-badge { font-size: 11px; top: 0; right: 1px; }
+  .rat-badge   { font-size: 9px;  top: 0; right: 1px; }
+
+  /* ── Side panel (Play / Teams tabs) ── */
+  #side-panel {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    width: 100% !important;
+    min-width: unset !important;
+    border-left: none;
+    overflow-y: auto;
+  }
+  #side-panel.m-active { display: flex; }
+
+  /* Only show panel sections that are tab-activated */
+  #side-panel .panel-section         { display: none !important; }
+  #side-panel .panel-section.m-active { display: block !important; }
+
+  /* Bigger tap targets */
+  .btn-action { padding: 16px 14px; font-size: 16px; border-radius: 10px; }
+  .proof-row input { padding: 14px 12px; font-size: 15px; }
+  .team-row { padding: 12px 12px; font-size: 14px; }
+
+  /* ── Log tab: event feed fills the space ── */
+  #event-feed { display: none; height: auto; }
+  #event-feed.m-active {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
 }

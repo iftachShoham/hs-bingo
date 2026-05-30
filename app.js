@@ -26,7 +26,8 @@ const state = {
   team:       null,   // { team_id, team_name, current_tile }
   isAdmin:    false,
   boardData:  null,
-  pollTimer:  null
+  pollTimer:  null,
+  activeTab:  'board'
 };
 
 // ══════════════════════════════════════════════════════
@@ -146,8 +147,19 @@ function enterGame() {
 
   addFeedEvent("sys", `Logged in as ${state.isAdmin ? "Game Master" : state.team.team_name}.`);
 
+  // On mobile, update Play tab label for admin
+  if (state.isAdmin) {
+    const tabIcon  = document.querySelector('.tab-btn[data-tab="play"] .tab-icon');
+    const tabLabel = document.querySelector('.tab-btn[data-tab="play"] .tab-label');
+    if (tabIcon)  tabIcon.textContent  = '🛡️';
+    if (tabLabel) tabLabel.textContent = 'Admin';
+  }
+
   // Always render the skeleton board immediately so something is visible
   renderEmptyBoard();
+
+  // Apply mobile tab layout before first render
+  if (isMobile()) switchTab('board');
 
   refreshBoard().then(() => {
     state.pollTimer = setInterval(refreshBoard, 6000);
@@ -339,7 +351,7 @@ function renderBoard(data) {
       });
       cell.appendChild(barEl);
 
-      // Hover tooltip
+      // Desktop hover tooltip
       const tip = document.createElement("div");
       tip.className = "tile-tooltip";
       let tipLines = [`Tile ${tileNum}`];
@@ -349,6 +361,11 @@ function renderBoard(data) {
       if (teamsHere.length) tipLines.push(teamsHere.map(t => `${getTeamBullet(t.team_id)} ${t.team_name}`).join("  "));
       tip.textContent = tipLines.join("\n");
       cell.appendChild(tip);
+
+      // Mobile tap → info modal
+      cell.addEventListener('click', () => {
+        if (isMobile()) showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, completedIds);
+      });
 
       boardEl.appendChild(cell);
     });
@@ -531,6 +548,108 @@ function addFeedEvent(type, message) {
 }
 
 function clearFeed() { document.getElementById("feed-items").innerHTML = ""; }
+
+// ══════════════════════════════════════════════════════
+//  MOBILE — tab navigation & tile modal
+// ══════════════════════════════════════════════════════
+
+function isMobile() {
+  return window.matchMedia('(max-width: 860px)').matches;
+}
+
+function switchTab(name) {
+  state.activeTab = name;
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === name)
+  );
+  if (isMobile()) _applyMobileTab(name);
+}
+
+function _applyMobileTab(name) {
+  const bw = document.getElementById('board-wrapper');
+  const sp = document.getElementById('side-panel');
+  const ef = document.getElementById('event-feed');
+  const ml = document.getElementById('main-layout');
+
+  // Close any open tile modal when switching tabs
+  document.getElementById('tile-modal').classList.add('hidden');
+
+  // Log tab: hide main layout, show event feed full-height
+  const isLog = name === 'log';
+  ml.style.display = isLog ? 'none' : '';
+  ef.classList.toggle('m-active', isLog);
+
+  if (isLog) return;
+
+  // Board tab: show board; others: show side panel
+  bw.classList.toggle('m-active', name === 'board');
+  sp.classList.toggle('m-active', name !== 'board');
+
+  // Reveal the right panel sections
+  document.querySelectorAll('#side-panel .panel-section').forEach(s =>
+    s.classList.remove('m-active')
+  );
+
+  const sectionsForTab = {
+    play:  ['task-section', 'actions-section', 'admin-section'],
+    teams: ['teams-section', 'admin-section']
+  };
+
+  (sectionsForTab[name] || []).forEach(id => {
+    const el = document.getElementById(id);
+    // Respect hidden class (admin vs player visibility)
+    if (el && !el.classList.contains('hidden')) el.classList.add('m-active');
+  });
+}
+
+function showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, completedIds) {
+  document.getElementById('tile-modal-num').textContent = `Tile ${tileNum}`;
+
+  const body = document.getElementById('tile-modal-body');
+  body.innerHTML = '';
+
+  const addRow = (text) => {
+    const p = document.createElement('p');
+    p.textContent = text;
+    body.appendChild(p);
+  };
+
+  if (content) addRow('📋 ' + content);
+  if (snakes[tileNum]) addRow(`🐍 Snake head — slides to tile ${snakes[tileNum]}`);
+  if (triggeredRatSet.has(tileNum)) addRow('🐀 Rat trap (already triggered)');
+
+  if (teamsHere.length) {
+    const p = document.createElement('p');
+    const lbl = document.createElement('strong');
+    lbl.textContent = 'Here now: ';
+    p.appendChild(lbl);
+    p.appendChild(document.createTextNode(
+      teamsHere.map(t => `${getTeamBullet(t.team_id)} ${t.team_name}`).join('  ')
+    ));
+    body.appendChild(p);
+  }
+
+  if (completedIds.length) {
+    const p = document.createElement('p');
+    const lbl = document.createElement('strong');
+    lbl.textContent = 'Completed by: ';
+    p.appendChild(lbl);
+    const names = completedIds.map(id => {
+      const t = (state.boardData?.teams || []).find(t => Number(t.team_id) === id);
+      return t ? `${getTeamBullet(id)} ${t.team_name}` : `Team ${id}`;
+    });
+    p.appendChild(document.createTextNode(names.join('  ')));
+    body.appendChild(p);
+  }
+
+  if (!body.children.length) addRow('No task for this tile.');
+
+  document.getElementById('tile-modal').classList.remove('hidden');
+}
+
+function closeTileModal() {
+  document.getElementById('tile-modal').classList.add('hidden');
+}
 
 // ══════════════════════════════════════════════════════
 //  INIT

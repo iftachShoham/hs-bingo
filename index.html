@@ -104,6 +104,31 @@
       <div id="feed-items"></div>
     </div>
 
+    <!-- ── Mobile Tab Bar ── -->
+    <nav id="mobile-tabs">
+      <button class="tab-btn active" data-tab="board" onclick="switchTab('board')">
+        <span class="tab-icon">🗺️</span><span class="tab-label">Board</span>
+      </button>
+      <button class="tab-btn" data-tab="play" onclick="switchTab('play')">
+        <span class="tab-icon">🎲</span><span class="tab-label">Play</span>
+      </button>
+      <button class="tab-btn" data-tab="teams" onclick="switchTab('teams')">
+        <span class="tab-icon">🏆</span><span class="tab-label">Teams</span>
+      </button>
+      <button class="tab-btn" data-tab="log" onclick="switchTab('log')">
+        <span class="tab-icon">📋</span><span class="tab-label">Log</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- ── Tile Info Modal (mobile tap) ── -->
+  <div id="tile-modal" class="hidden" onclick="closeTileModal()">
+    <div id="tile-modal-card" onclick="event.stopPropagation()">
+      <div id="tile-modal-num"></div>
+      <div id="tile-modal-body"></div>
+      <button class="btn-action btn-info" style="margin-top:14px;width:100%;" onclick="closeTileModal()">Close</button>
+    </div>
   </div>
 
   <script src="app.js"></script>
