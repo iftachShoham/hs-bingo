@@ -9,7 +9,8 @@ const CONFIG = {
   WEB_SECRET: "placeholder",
 
   // Whoever types this on the login screen gets Game Master controls
-  ADMIN_CODE: "gamemaster"
+  ADMIN_CODE: "gamemaster",
+
 };
 
 // ── RAT tiles (must match the Apps Script constant) ──
@@ -373,16 +374,53 @@ function renderBoard(data) {
 }
 
 function renderTeamsList(teams) {
-  const el = document.getElementById("teams-list");
-  el.innerHTML = "";
-  const myId = state.team ? Number(state.team.team_id) : null;
+  const el      = document.getElementById("teams-list");
+  el.innerHTML  = "";
+  const myId    = state.team ? Number(state.team.team_id) : null;
+  const tileMap = state.boardData?.tileContentMap || {};
+
   teams.forEach(t => {
+    const tid      = Number(t.team_id);
+    const tile     = Number(t.current_tile);
+    const tileText = tile > 0 ? `Tile ${tile}` : "Start";
+    // Admin sees all tasks; players see only their own current task
+    const showTask = (state.isAdmin || tid === myId) && tile > 0;
+    const taskText = showTask ? (tileMap[tile] || "") : "";
+
     const row = document.createElement("div");
-    row.className = "team-row" + (Number(t.team_id) === myId ? " is-mine" : "");
-    row.innerHTML = `
-      <span class="team-bullet">${getTeamBullet(t.team_id)}</span>
-      <span class="team-name">${t.team_name}</span>
-      <span class="team-tile">${Number(t.current_tile) > 0 ? `Tile ${t.current_tile}` : "Start"}</span>`;
+    row.className = "team-row" + (tid === myId ? " is-mine" : "");
+
+    const bullet = document.createElement("span");
+    bullet.className = "team-bullet";
+    bullet.textContent = getTeamBullet(tid);
+
+    const info = document.createElement("div");
+    info.className = "team-info";
+
+    const nameRow = document.createElement("div");
+    nameRow.className = "team-name-tile";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "team-name";
+    nameEl.textContent = t.team_name;
+
+    const tileEl = document.createElement("span");
+    tileEl.className = "team-tile";
+    tileEl.textContent = tileText;
+
+    nameRow.appendChild(nameEl);
+    nameRow.appendChild(tileEl);
+    info.appendChild(nameRow);
+
+    if (taskText) {
+      const taskEl = document.createElement("div");
+      taskEl.className = "team-task";
+      taskEl.textContent = taskText;
+      info.appendChild(taskEl);
+    }
+
+    row.appendChild(bullet);
+    row.appendChild(info);
     el.appendChild(row);
   });
 }
