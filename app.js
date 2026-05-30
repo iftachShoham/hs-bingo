@@ -1,14 +1,14 @@
 // ══════════════════════════════════════════════════════
-//  CONFIG — fill these two values in before testing
+//  CONFIG — fill in before deploying
 // ══════════════════════════════════════════════════════
 const CONFIG = {
-  // Your Google Apps Script web app URL (the one Cloudflare already calls)
+  // Your Google Apps Script web app URL
   APPS_SCRIPT_URL: "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
 
-  // The WEB_APP_SECRET from your Apps Script (line 7 in the script)
+  // The WEB_APP_SECRET value from line 7 of your Apps Script
   WEB_SECRET: "placeholder",
 
-  // Whoever enters this code gets the Game Master panel (choose anything)
+  // Whoever types this on the login screen gets Game Master controls
   ADMIN_CODE: "gamemaster"
 };
 
@@ -30,32 +30,28 @@ const state = {
 };
 
 // ══════════════════════════════════════════════════════
-//  API  — calls the Apps Script directly
-//  Using Content-Type: text/plain avoids CORS preflight
+//  API — calls Apps Script directly
+//  Content-Type: text/plain avoids CORS preflight (simple request)
 // ══════════════════════════════════════════════════════
 
-async function appsScriptPost(payload) {
+// All team/admin commands
+async function apiCommand(command, extra = {}) {
   const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
     method:   "POST",
     headers:  { "Content-Type": "text/plain;charset=utf-8" },
-    body:     JSON.stringify(payload),
+    body:     JSON.stringify({
+      secret:     CONFIG.WEB_SECRET,
+      channel_id: state.channelId,
+      command,
+      ...extra   // channel_id can be overridden here for admin commands
+    }),
     redirect: "follow"
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
-// All team commands — channel_id can be overridden for admin targeting
-async function apiCommand(command, extra = {}) {
-  return appsScriptPost({
-    secret:     CONFIG.WEB_SECRET,
-    channel_id: state.channelId,
-    command,
-    ...extra                // extra can override channel_id for admin commands
-  });
-}
-
-// Board state — public GET endpoint, no secret needed
+// Board state — public GET endpoint on Apps Script, no auth needed
 async function apiFetchBoardState() {
   const res = await fetch(
     `${CONFIG.APPS_SCRIPT_URL}?view=boarddata&cb=${Date.now()}`,
@@ -150,6 +146,9 @@ function enterGame() {
 
   addFeedEvent("sys", `Logged in as ${state.isAdmin ? "Game Master" : state.team.team_name}.`);
 
+  // Always render the skeleton board immediately so something is visible
+  renderEmptyBoard();
+
   refreshBoard().then(() => {
     state.pollTimer = setInterval(refreshBoard, 6000);
   });
@@ -162,7 +161,7 @@ function enterGame() {
 async function refreshBoard() {
   // Catch config mistake early so user sees a clear message
   if (CONFIG.APPS_SCRIPT_URL.includes("YOUR_DEPLOYMENT_ID")) {
-    showBoardError("⚙️ APPS_SCRIPT_URL is still the placeholder.\nOpen app.js and paste your real Apps Script URL on line 6.");
+    showBoardError("⚙️ APPS_SCRIPT_URL is still the placeholder.\nOpen app.js and paste your Apps Script URL on line 6.");
     return;
   }
 
@@ -238,6 +237,24 @@ function buildGrid() {
     grid.push(row);
   }
   return grid;
+}
+
+function renderEmptyBoard() {
+  const boardEl = document.getElementById("board-grid");
+  boardEl.innerHTML = "";
+  boardEl.style.removeProperty("display");
+  buildGrid().forEach(row => {
+    row.forEach(tileNum => {
+      const cell = document.createElement("div");
+      cell.className = "tile";
+      if (RAT_TILES.has(tileNum)) cell.classList.add("rat-tile");
+      const numEl = document.createElement("div");
+      numEl.className = "tile-num";
+      numEl.textContent = tileNum;
+      cell.appendChild(numEl);
+      boardEl.appendChild(cell);
+    });
+  });
 }
 
 function renderBoard(data) {
@@ -483,8 +500,7 @@ async function doReset() {
 
   setActionResult("🔄 Resetting…");
   try {
-    // Reset doesn't need a channel_id — send with a dummy value, Apps Script ignores it for reset
-    const result = await appsScriptPost({ secret: CONFIG.WEB_SECRET, command: "reset" });
+    const result = await apiCommand("reset");
     setActionResult(result.message || JSON.stringify(result));
     addFeedEvent(result.success ? "sys" : "err", result.success ? "🔄 Game reset." : result.message);
     if (result.success) refreshBoard();
