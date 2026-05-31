@@ -321,6 +321,7 @@ body {
   padding: 14px;
   overflow: hidden;
   min-width: 0;
+  position: relative;
   background-color: var(--bg);
   background-image:
     repeating-linear-gradient(
@@ -333,6 +334,30 @@ body {
       rgba(0,0,0,0.035) 0px, rgba(0,0,0,0.035) 1px,
       transparent 1px, transparent 12px
     );
+}
+
+/* ── Board GIF overlay ── */
+#board-gif-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  animation: gif-fade-in 0.2s ease;
+}
+#board-gif-overlay.hidden { display: none !important; }
+#board-gif-img {
+  max-width: 70%;
+  max-height: 70%;
+  border-radius: 8px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+}
+@keyframes gif-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* Board grid — OSRS-style inset frame */
