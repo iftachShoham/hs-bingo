@@ -15,7 +15,7 @@ const CONFIG = {
   IMGBB_KEY: "10ab068f4a22b9c256c83eeddfcbfd75",
 
   // URL of the proxy Cloudflare Worker (routes commands + forwards to Discord)
-  PROXY_URL: "",
+  PROXY_URL: "https://high-society-bingo-discord.borisvdh96.workers.dev/",
 
 };
 
