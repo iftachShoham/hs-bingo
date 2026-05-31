@@ -73,6 +73,19 @@ export default {
           redirect: "follow"
         });
         const data = await res.json();
+
+        // Post to the team's Discord channel when action came from the web app
+        if (data.success && rest.source === "web" && env.DISCORD_BOT_TOKEN && rest.channel_id) {
+          const msg = buildWebDiscordMessage(rest, data);
+          if (msg) discordPost(env, rest.channel_id, msg);
+          // Rat victim notifications — send to the victim's channel too
+          if (Array.isArray(data.extra_channel_messages)) {
+            for (const item of data.extra_channel_messages) {
+              if (item.channel_id && item.message) discordPost(env, item.channel_id, item.message);
+            }
+          }
+        }
+
         return respond(data);
       } catch (err) {
         return respond({ success: false, message: err.message }, 500);
@@ -82,3 +95,33 @@ export default {
     return respond({ success: false, message: "Method not allowed" }, 405);
   }
 };
+
+// Build the Discord message for web-initiated actions
+function buildWebDiscordMessage(req, data) {
+  const player = req.player_name ? ` (${req.player_name})` : "";
+
+  // Complete: build clean message — avoids the "someone (someone)" format from Apps Script
+  if (req.command === "complete" && data.result) {
+    const r = data.result;
+    let msg = `✅ **${r.team_name}**${player} completed Tile ${r.tile}: *${r.tile_content || ""}*`;
+    if (r.proof_url) msg += `\n🖼️ ${r.proof_url}`;
+    return msg;
+  }
+
+  // Everything else: use the Apps Script message, append who triggered it from web
+  if (!data.message) return null;
+  const credit = req.player_name ? ` *(${req.player_name} via web)*` : " *(via web)*";
+  return data.message + credit;
+}
+
+// Fire-and-forget Discord channel message via bot token
+function discordPost(env, channelId, content) {
+  fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ content })
+  }).catch(() => {});
+}

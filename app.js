@@ -14,6 +14,9 @@ const CONFIG = {
   // Free API key from https://api.imgbb.com — needed for image proof uploads
   IMGBB_KEY: "10ab068f4a22b9c256c83eeddfcbfd75",
 
+  // URL of the proxy Cloudflare Worker (routes commands + forwards to Discord)
+  PROXY_URL: "",
+
 };
 
 // ── RAT tiles (must match the Apps Script constant) ──
@@ -41,13 +44,13 @@ const state = {
 //  Content-Type: text/plain avoids CORS preflight (simple request)
 // ══════════════════════════════════════════════════════
 
-// All team/admin commands
+// All team/admin commands — routed through proxy worker
 async function apiCommand(command, extra = {}) {
-  const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+  const res = await fetch(CONFIG.PROXY_URL, {
     method:   "POST",
     headers:  { "Content-Type": "text/plain;charset=utf-8" },
     body:     JSON.stringify({
-      secret:      CONFIG.WEB_SECRET,
+      web_secret:  CONFIG.WEB_SECRET,
       channel_id:  state.channelId,
       command,
       player_name: state.playerName || "",
@@ -530,7 +533,7 @@ async function doComplete() {
       finalUrl = await uploadProofImage(state.proofFile);
     }
 
-    const result = await apiCommand("complete", { proof_url: finalUrl });
+    const result = await apiCommand("complete", { proof_url: finalUrl, username: state.playerName || "" });
     setCompleteResult(result.message || JSON.stringify(result));
 
     addFeedEvent(result.success ? "ok" : "err", result.message || "Complete done.");
