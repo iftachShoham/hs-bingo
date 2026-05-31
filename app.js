@@ -525,13 +525,32 @@ async function doRoll() {
     const result = await apiCommand("roll");
     setRollResult(result.message || JSON.stringify(result));
     addFeedEvent(result.success ? "ok" : "err", result.message || "Roll done.");
-    if (result.success) refreshBoard();
+    if (result.success) {
+      const msg = (result.message || "").toLowerCase();
+      if (msg.includes("snake"))     showBoardGif("snake-dance.gif");
+      else if (msg.includes("rat"))  showBoardGif("rat-dance.gif");
+      refreshBoard();
+    }
   } catch (err) {
     setRollResult("❌ " + err.message);
     addFeedEvent("err", err.message);
   } finally {
     setBusy(btn, false, "🎲 Roll Dice");
   }
+}
+
+let _gifTimer = null;
+function showBoardGif(filename) {
+  const overlay = document.getElementById("board-gif-overlay");
+  const img     = document.getElementById("board-gif-img");
+  if (_gifTimer) { clearTimeout(_gifTimer); _gifTimer = null; }
+  img.src = filename;
+  overlay.classList.remove("hidden");
+  _gifTimer = setTimeout(() => {
+    overlay.classList.add("hidden");
+    img.src = "";
+    _gifTimer = null;
+  }, 3000);
 }
 
 async function doComplete() {
