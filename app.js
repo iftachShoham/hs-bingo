@@ -47,9 +47,11 @@ async function apiCommand(command, extra = {}) {
     method:   "POST",
     headers:  { "Content-Type": "text/plain;charset=utf-8" },
     body:     JSON.stringify({
-      secret:     CONFIG.WEB_SECRET,
-      channel_id: state.channelId,
+      secret:      CONFIG.WEB_SECRET,
+      channel_id:  state.channelId,
       command,
+      player_name: state.playerName || "",
+      source:      "web",
       ...extra   // channel_id can be overridden here for admin commands
     }),
     redirect: "follow"
@@ -531,8 +533,7 @@ async function doComplete() {
     const result = await apiCommand("complete", { proof_url: finalUrl });
     setCompleteResult(result.message || JSON.stringify(result));
 
-    const who = state.playerName ? `${state.playerName} · ` : "";
-    addFeedEvent(result.success ? "ok" : "err", `${who}${result.message || "Complete done."}`);
+    addFeedEvent(result.success ? "ok" : "err", result.message || "Complete done.");
 
     if (result.success) {
       clearProof();
