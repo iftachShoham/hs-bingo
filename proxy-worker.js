@@ -7,6 +7,7 @@
 //  Required environment variables (set in Worker settings):
 //    GOOGLE_SCRIPT_URL  — your Apps Script web app URL
 //    WEB_APP_SECRET     — same secret as in your Apps Script
+//    DISCORD_BOT_TOKEN  — bot token for posting web actions to Discord channels
 // ══════════════════════════════════════════════════════
 
 const CORS_HEADERS = {
@@ -23,7 +24,7 @@ function respond(body, status = 200) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
 
     // CORS preflight
     if (request.method === "OPTIONS") {
@@ -76,14 +77,17 @@ export default {
 
         // Post to the team's Discord channel when action came from the web app
         if (data.success && rest.source === "web" && env.DISCORD_BOT_TOKEN && rest.channel_id) {
+          const posts = [];
           const msg = buildWebDiscordMessage(rest, data);
-          if (msg) discordPost(env, rest.channel_id, msg);
+          if (msg) posts.push(discordPost(env, rest.channel_id, msg));
           // Rat victim notifications — send to the victim's channel too
           if (Array.isArray(data.extra_channel_messages)) {
             for (const item of data.extra_channel_messages) {
-              if (item.channel_id && item.message) discordPost(env, item.channel_id, item.message);
+              if (item.channel_id && item.message) posts.push(discordPost(env, item.channel_id, item.message));
             }
           }
+          // waitUntil keeps the worker alive until Discord posts complete
+          if (posts.length) ctx.waitUntil(Promise.all(posts));
         }
 
         return respond(data);
@@ -114,9 +118,9 @@ function buildWebDiscordMessage(req, data) {
   return data.message + credit;
 }
 
-// Fire-and-forget Discord channel message via bot token
+// Post a message to a Discord channel via bot token — returns the promise for ctx.waitUntil
 function discordPost(env, channelId, content) {
-  fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+  return fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
     method: "POST",
     headers: {
       "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
