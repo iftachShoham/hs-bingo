@@ -46,25 +46,41 @@ const state = {
 
 // All team/admin commands
 // Routes through proxy worker when PROXY_URL is configured (enables Discord posting).
-// Falls back to calling Apps Script directly if proxy is not set up yet.
+// Falls back to calling Apps Script directly if proxy is unreachable or not deployed.
 async function apiCommand(command, extra = {}) {
   const useProxy = CONFIG.PROXY_URL && !CONFIG.PROXY_URL.includes("%%");
-  const url      = useProxy ? CONFIG.PROXY_URL : CONFIG.APPS_SCRIPT_URL;
-  const authKey  = useProxy ? "web_secret" : "secret";
 
-  const res = await fetch(url, {
-    method:   "POST",
-    headers:  { "Content-Type": "text/plain;charset=utf-8" },
-    body:     JSON.stringify({
-      [authKey]:   CONFIG.WEB_SECRET,
-      channel_id:  state.channelId,
-      command,
-      player_name: state.playerName || "",
-      source:      "web",
-      ...extra   // channel_id can be overridden here for admin commands
-    }),
-    redirect: "follow"
+  const makeBody = (authKey, url) => ({
+    url,
+    options: {
+      method:   "POST",
+      headers:  { "Content-Type": "text/plain;charset=utf-8" },
+      body:     JSON.stringify({
+        [authKey]:   CONFIG.WEB_SECRET,
+        channel_id:  state.channelId,
+        command,
+        player_name: state.playerName || "",
+        source:      "web",
+        ...extra
+      }),
+      redirect: "follow"
+    }
   });
+
+  if (useProxy) {
+    try {
+      const { url, options } = makeBody("web_secret", CONFIG.PROXY_URL);
+      const res = await fetch(url, options);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    } catch (proxyErr) {
+      console.warn("Proxy failed, falling back to direct Apps Script:", proxyErr.message);
+    }
+  }
+
+  // Direct Apps Script (fallback or no proxy configured)
+  const { url, options } = makeBody("secret", CONFIG.APPS_SCRIPT_URL);
+  const res = await fetch(url, options);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
