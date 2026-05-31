@@ -44,13 +44,19 @@ const state = {
 //  Content-Type: text/plain avoids CORS preflight (simple request)
 // ══════════════════════════════════════════════════════
 
-// All team/admin commands — routed through proxy worker
+// All team/admin commands
+// Routes through proxy worker when PROXY_URL is configured (enables Discord posting).
+// Falls back to calling Apps Script directly if proxy is not set up yet.
 async function apiCommand(command, extra = {}) {
-  const res = await fetch(CONFIG.PROXY_URL, {
+  const useProxy = CONFIG.PROXY_URL && !CONFIG.PROXY_URL.includes("%%");
+  const url      = useProxy ? CONFIG.PROXY_URL : CONFIG.APPS_SCRIPT_URL;
+  const authKey  = useProxy ? "web_secret" : "secret";
+
+  const res = await fetch(url, {
     method:   "POST",
     headers:  { "Content-Type": "text/plain;charset=utf-8" },
     body:     JSON.stringify({
-      web_secret:  CONFIG.WEB_SECRET,
+      [authKey]:   CONFIG.WEB_SECRET,
       channel_id:  state.channelId,
       command,
       player_name: state.playerName || "",
