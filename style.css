@@ -419,7 +419,7 @@ body {
     0 6px 28px rgba(0,0,0,0.9);
 }
 .tile:hover .tile-tooltip  { display: none; }
-.tile:hover .tile-bg-img   { opacity: 0.45; }
+.tile:hover .tile-bg-img   { opacity: 0.62; }
 
 .tile-bg-img {
   position: absolute;
@@ -427,10 +427,12 @@ body {
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  opacity: 0.30;
+  opacity: 0.38;
   pointer-events: none;
   z-index: 0;
   transition: opacity 0.22s;
+  image-rendering: pixelated;
+  image-rendering: -webkit-optimize-contrast;
 }
 
 /* Ensure all tile content renders above the background image */
@@ -1085,7 +1087,8 @@ body {
   background-repeat: no-repeat;
   background-position: center;
   margin: 4px 0 16px;
-  filter: drop-shadow(0 4px 14px rgba(0,0,0,0.7));
+  image-rendering: pixelated;
+  image-rendering: -webkit-optimize-contrast;
 }
 #tile-modal-img.hidden { display: none; }
 
