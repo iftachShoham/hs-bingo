@@ -151,9 +151,11 @@
   <!-- ── Tile Info Modal (mobile tap) ── -->
   <div id="tile-modal" class="hidden" onclick="closeTileModal()">
     <div id="tile-modal-card" onclick="event.stopPropagation()">
+      <button class="tile-modal-close" onclick="closeTileModal()">✕</button>
       <div id="tile-modal-num"></div>
+      <div id="tile-modal-task"></div>
+      <div id="tile-modal-img" class="hidden"></div>
       <div id="tile-modal-body"></div>
-      <button class="btn-action btn-info" style="margin-top:14px;width:100%;" onclick="closeTileModal()">Close</button>
     </div>
   </div>
 
