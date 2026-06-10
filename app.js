@@ -43,7 +43,12 @@ const state = {
 // ── Tile images — loaded once, matched by normalised task name ──
 async function loadTileImages() {
   try {
-    const res  = await fetch('tile-images.json');
+    const res = await fetch('tile-images.json');
+    if (!res.ok) {
+      console.warn('[tile-images] fetch failed:', res.status, res.url);
+      state.tileImages = new Map();
+      return;
+    }
     const data = await res.json();
     const map  = new Map();
     for (const entry of Object.values(data)) {
@@ -52,7 +57,9 @@ async function loadTileImages() {
       }
     }
     state.tileImages = map;
-  } catch (_) {
+    console.log(`[tile-images] loaded ${map.size} entries`);
+  } catch (err) {
+    console.warn('[tile-images] error:', err);
     state.tileImages = new Map();
   }
 }
@@ -388,13 +395,14 @@ function renderBoard(data) {
       const content = (tileContentMap && tileContentMap[tileNum]) || "";
       if (content) {
         // Background image watermark (behind all text)
-        if (state.tileImages) {
-          const imgPath = state.tileImages.get(content.toLowerCase().trim());
+        if (state.tileImages && state.tileImages.size > 0) {
+          const key     = content.toLowerCase().trim();
+          const imgPath = state.tileImages.get(key);
           if (imgPath) {
             const bgEl = document.createElement("div");
             bgEl.className = "tile-bg-img";
             bgEl.style.backgroundImage = `url('${imgPath.replace(/'/g, "%27")}')`;
-            cell.appendChild(bgEl);
+            cell.insertBefore(bgEl, cell.firstChild);
           }
         }
 
