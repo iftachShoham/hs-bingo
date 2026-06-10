@@ -421,8 +421,18 @@ body {
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  opacity: 0.18;
+  opacity: 0.22;
   pointer-events: none;
+  z-index: 0;
+}
+
+/* Ensure all tile content renders above the background image */
+.tile-num,
+.tile-content,
+.tile-pawns,
+.completion-bar {
+  position: relative;
+  z-index: 1;
 }
 
 .tile-num {
