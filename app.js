@@ -450,9 +450,9 @@ function renderBoard(data) {
       tip.textContent = tipLines.join("\n");
       cell.appendChild(tip);
 
-      // Mobile tap → info modal
+      // Click → info modal (all devices)
       cell.addEventListener('click', () => {
-        if (isMobile()) showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, completedIds);
+        showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, completedIds);
       });
 
       boardEl.appendChild(cell);
@@ -853,6 +853,25 @@ function _applyMobileTab(name) {
 function showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, completedIds) {
   document.getElementById('tile-modal-num').textContent = `Tile ${tileNum}`;
 
+  // Task name line
+  const taskEl = document.getElementById('tile-modal-task');
+  taskEl.textContent = content || '';
+  taskEl.style.display = content ? '' : 'none';
+
+  // Image
+  const imgEl = document.getElementById('tile-modal-img');
+  const imgPath = state.tileImages && content
+    ? state.tileImages.get(content.toLowerCase().trim())
+    : null;
+  if (imgPath) {
+    imgEl.style.backgroundImage = `url('${imgPath.replace(/'/g, "%27")}')`;
+    imgEl.classList.remove('hidden');
+  } else {
+    imgEl.classList.add('hidden');
+    imgEl.style.backgroundImage = '';
+  }
+
+  // Extra info rows
   const body = document.getElementById('tile-modal-body');
   body.innerHTML = '';
 
@@ -862,8 +881,7 @@ function showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, comp
     body.appendChild(p);
   };
 
-  if (content) addRow('📋 ' + content);
-  if (snakes[tileNum]) addRow(`🐍 Snake head — slides to tile ${snakes[tileNum]}`);
+  if (snakes[tileNum])          addRow(`🐍 Snake head — slides to tile ${snakes[tileNum]}`);
   if (triggeredRatSet.has(tileNum)) addRow('🐀 Rat trap (already triggered)');
 
   if (teamsHere.length) {
@@ -890,8 +908,6 @@ function showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, comp
     body.appendChild(p);
   }
 
-  if (!body.children.length) addRow('No task for this tile.');
-
   document.getElementById('tile-modal').classList.remove('hidden');
 }
 
@@ -908,6 +924,9 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("logout-btn").addEventListener("click", logout);
   document.getElementById("team-code-input").addEventListener("keydown", e => {
     if (e.key === "Enter") login();
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeTileModal();
   });
 
   // Pre-fill saved player name

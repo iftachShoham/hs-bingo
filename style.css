@@ -393,8 +393,11 @@ body {
   font-size: 9px;
   overflow: hidden;
   position: relative;
-  cursor: default;
-  transition: border-color 0.12s, transform 0.1s, box-shadow 0.12s;
+  cursor: pointer;
+  transition: border-color 0.12s,
+              transform 0.22s cubic-bezier(0.34, 1.4, 0.64, 1),
+              box-shadow 0.15s,
+              opacity 0.12s;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -405,15 +408,18 @@ body {
 }
 
 .tile:hover {
-  border-color: var(--accent);
-  transform: scale(1.035);
-  z-index: 10;
+  border-color: var(--accent-hi);
+  transform: scale(1.7);
+  z-index: 20;
   overflow: visible;
   box-shadow:
-    inset 1px 1px 0 rgba(200,164,40,0.22),
-    0 0 12px rgba(200,164,40,0.55);
+    inset 1px 1px 0 rgba(200,164,40,0.3),
+    0 0 0 1px var(--accent),
+    0 0 22px rgba(200,164,40,0.75),
+    0 6px 28px rgba(0,0,0,0.9);
 }
-.tile:hover .tile-tooltip { display: block; }
+.tile:hover .tile-tooltip  { display: none; }
+.tile:hover .tile-bg-img   { opacity: 0.45; }
 
 .tile-bg-img {
   position: absolute;
@@ -421,9 +427,10 @@ body {
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  opacity: 0.22;
+  opacity: 0.30;
   pointer-events: none;
   z-index: 0;
+  transition: opacity 0.22s;
 }
 
 /* Ensure all tile content renders above the background image */
@@ -1025,7 +1032,7 @@ body {
   position: relative;
   border-radius: 2px;
   padding: 24px 20px 20px;
-  max-width: 320px;
+  max-width: 400px;
   width: 100%;
   background-color: #1e1508;
   background-image:
@@ -1036,39 +1043,72 @@ body {
       transparent 3px, transparent 8px
     ),
     linear-gradient(160deg, #2a1e0a 0%, #1e1408 60%, #160e06 100%);
-  /* Same ornate frame as login */
   box-shadow:
     var(--frame),
     var(--bevel-up),
     0 24px 80px rgba(0,0,0,0.95);
 }
 
-/* Corner ornaments on modal */
-#tile-modal-card::before,
-#tile-modal-card::after {
+/* Left ornament only — right is replaced by X button */
+#tile-modal-card::before {
   content: '◆';
   position: absolute;
   font-size: 11px;
   color: var(--accent);
   opacity: 0.65;
   top: 10px;
+  left: 12px;
 }
-#tile-modal-card::before { left: 12px; }
-#tile-modal-card::after  { right: 12px; }
+
+/* X close button */
+.tile-modal-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: color 0.1s, transform 0.1s;
+  z-index: 1;
+}
+.tile-modal-close:hover { color: var(--accent-hi); transform: scale(1.15); }
+
+/* Image in modal */
+#tile-modal-img {
+  width: 100%;
+  height: 160px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  margin: 4px 0 16px;
+  filter: drop-shadow(0 4px 14px rgba(0,0,0,0.7));
+}
+#tile-modal-img.hidden { display: none; }
 
 #tile-modal-num {
   font-family: 'Cinzel', 'Times New Roman', serif;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--accent);
-  margin-bottom: 12px;
+  margin-bottom: 4px;
   letter-spacing: 2px;
   text-transform: uppercase;
   text-shadow:
     0 0 16px rgba(200,164,40,0.55),
     0 2px 6px rgba(0,0,0,0.9);
 }
-#tile-modal-body { font-size: 14px; line-height: 1.65; color: var(--text); }
+#tile-modal-task {
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 4px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+#tile-modal-body { font-size: 13px; line-height: 1.65; color: var(--text-dim); }
 #tile-modal-body p { margin-bottom: 6px; }
 #tile-modal-body p:last-child { margin-bottom: 0; }
 
