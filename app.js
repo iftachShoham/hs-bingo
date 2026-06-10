@@ -344,7 +344,7 @@ function renderEmptyBoard() {
 }
 
 function renderBoard(data) {
-  const { teams, tileContentMap, completedByTile, snakes } = data;
+  const { teams, tileContentMap, completedByTile, snakes, tileAmountMap, completionCountsByTile } = data;
   const triggeredRatSet = new Set((data.triggeredRats || []).map(Number));
 
   const teamsByTile = {};
@@ -365,6 +365,9 @@ function renderBoard(data) {
   buildGrid().forEach(row => {
     row.forEach(tileNum => {
       const completedIds = (completedByTile[String(tileNum)] || []).map(Number);
+      const required     = Number((tileAmountMap || {})[String(tileNum)] || 1);
+      const tileCounts   = (completionCountsByTile || {})[String(tileNum)] || {};
+
       const cell = document.createElement("div");
       cell.className = "tile";
       cell.dataset.tile = tileNum;
@@ -394,7 +397,6 @@ function renderBoard(data) {
       // Task content
       const content = (tileContentMap && tileContentMap[tileNum]) || "";
       if (content) {
-        // Background image watermark (behind all text)
         if (state.tileImages && state.tileImages.size > 0) {
           const key     = content.toLowerCase().trim();
           const imgPath = state.tileImages.get(key);
@@ -405,7 +407,6 @@ function renderBoard(data) {
             cell.insertBefore(bgEl, cell.firstChild);
           }
         }
-
         const cEl = document.createElement("div");
         cEl.className = "tile-content";
         cEl.textContent = content;
@@ -426,7 +427,7 @@ function renderBoard(data) {
         cell.appendChild(pawnsEl);
       }
 
-      // Completion bar ▰▱
+      // Completion bar ▰▱ (fully-completed teams only — unchanged)
       const barEl = document.createElement("div");
       barEl.className = "completion-bar";
       [1,2,3,4].forEach(id => {
@@ -439,6 +440,17 @@ function renderBoard(data) {
       });
       cell.appendChild(barEl);
 
+      // Progress label for multi-completion tiles only
+      if (required > 1) {
+        const progEl = document.createElement("div");
+        progEl.className = "tile-progress";
+        const parts = [1, 2, 3, 4]
+          .filter(id => (tileCounts[String(id)] || 0) > 0)
+          .map(id => `${getTeamBullet(id)}${tileCounts[String(id)]}/${required}`);
+        progEl.textContent = parts.length ? parts.join(" ") : `0/${required}`;
+        cell.appendChild(progEl);
+      }
+
       // Desktop hover tooltip
       const tip = document.createElement("div");
       tip.className = "tile-tooltip";
@@ -447,12 +459,18 @@ function renderBoard(data) {
       if (snakes[tileNum]) tipLines.push(`🐍 Snake → tile ${snakes[tileNum]}`);
       if (triggeredRatSet.has(tileNum)) tipLines.push("🐀 Rat trap (triggered)");
       if (teamsHere.length) tipLines.push(teamsHere.map(t => `${getTeamBullet(t.team_id)} ${t.team_name}`).join("  "));
+      if (required > 1) {
+        const tp = [1, 2, 3, 4]
+          .map(id => `${getTeamBullet(id)} ${tileCounts[String(id)] || 0}/${required}`)
+          .join("  ");
+        tipLines.push(`Progress: ${tp}`);
+      }
       tip.textContent = tipLines.join("\n");
       cell.appendChild(tip);
 
       // Click → info modal (all devices)
       cell.addEventListener('click', () => {
-        showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, completedIds);
+        showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, completedIds, required, tileCounts);
       });
 
       boardEl.appendChild(cell);
@@ -462,18 +480,27 @@ function renderBoard(data) {
 }
 
 function renderTeamsList(teams) {
-  const el      = document.getElementById("teams-list");
-  el.innerHTML  = "";
-  const myId    = state.team ? Number(state.team.team_id) : null;
-  const tileMap = state.boardData?.tileContentMap || {};
+  const el        = document.getElementById("teams-list");
+  el.innerHTML    = "";
+  const myId      = state.team ? Number(state.team.team_id) : null;
+  const tileMap   = state.boardData?.tileContentMap || {};
+  const amountMap = state.boardData?.tileAmountMap || {};
+  const countsMap = state.boardData?.completionCountsByTile || {};
 
   teams.forEach(t => {
     const tid      = Number(t.team_id);
     const tile     = Number(t.current_tile);
     const tileText = tile > 0 ? `Tile ${tile}` : "Start";
-    // Admin sees all tasks; players see only their own current task
     const showTask = (state.isAdmin || tid === myId) && tile > 0;
-    const taskText = showTask ? (tileMap[tile] || "") : "";
+    let taskText   = showTask ? (tileMap[tile] || "") : "";
+
+    if (taskText) {
+      const req = Number(amountMap[String(tile)] || 1);
+      if (req > 1) {
+        const c = Number((countsMap[String(tile)] || {})[String(tid)] || 0);
+        taskText += ` (${c}/${req})`;
+      }
+    }
 
     const row = document.createElement("div");
     row.className = "team-row" + (tid === myId ? " is-mine" : "");
@@ -524,13 +551,40 @@ function renderTaskBox(data) {
   const content = myTile > 0 ? ((data.tileContentMap || {})[myTile] || "No task text found") : "—";
   document.getElementById("task-desc").textContent = content;
 
-  const completedIds = ((data.completedByTile || {})[String(myTile)] || []).map(Number);
-  const isDone = completedIds.includes(myId);
-  document.getElementById("task-status").textContent =
-    myTile === 0   ? "Roll to enter the board!" :
-    myTile === 100 ? "🏆 You've won!" :
-    isDone         ? "✅ Completed — you can roll again!" :
-                     "⏳ Not completed yet. Use Complete when done.";
+  const required = Number((data.tileAmountMap || {})[String(myTile)] || 1);
+  const count    = Number(((data.completionCountsByTile || {})[String(myTile)] || {})[String(myId)] || 0);
+
+  const statusEl = document.getElementById("task-status");
+  let subsEl = document.getElementById("task-submissions");
+  if (!subsEl) {
+    subsEl = document.createElement("div");
+    subsEl.id = "task-submissions";
+    subsEl.className = "task-submissions";
+    statusEl.parentNode.insertBefore(subsEl, statusEl);
+  }
+  if (myTile > 0 && required > 1) {
+    subsEl.textContent = `Submissions: ${count} / ${required}`;
+    subsEl.style.display = "";
+  } else {
+    subsEl.style.display = "none";
+  }
+
+  let status;
+  if (myTile === 0) {
+    status = "Roll to enter the board!";
+  } else if (myTile === 100) {
+    status = "🏆 You've won!";
+  } else if (required > 1) {
+    if (count === 0)           status = "⏳ Not started. Submit with Complete when done.";
+    else if (count < required) status = `⏳ In progress (${count}/${required}). Keep submitting with proof.`;
+    else                       status = "✅ Completed — you can roll again!";
+  } else {
+    const completedIds = ((data.completedByTile || {})[String(myTile)] || []).map(Number);
+    status = completedIds.includes(myId)
+      ? "✅ Completed — you can roll again!"
+      : "⏳ Not completed yet. Use Complete when done.";
+  }
+  statusEl.textContent = status;
 }
 
 function updateHeaderTile() {
@@ -850,7 +904,7 @@ function _applyMobileTab(name) {
   });
 }
 
-function showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, completedIds) {
+function showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, completedIds, required = 1, tileCounts = {}) {
   document.getElementById('tile-modal-num').textContent = `Tile ${tileNum}`;
 
   // Task name line
@@ -881,8 +935,23 @@ function showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, comp
     body.appendChild(p);
   };
 
-  if (snakes[tileNum])          addRow(`🐍 Snake head — slides to tile ${snakes[tileNum]}`);
+  if (snakes[tileNum])              addRow(`🐍 Snake head — slides to tile ${snakes[tileNum]}`);
   if (triggeredRatSet.has(tileNum)) addRow('🐀 Rat trap (already triggered)');
+
+  // Per-team completion progress for multi-completion tiles
+  if (required > 1) {
+    const p = document.createElement('p');
+    const lbl = document.createElement('strong');
+    lbl.textContent = 'Completions: ';
+    p.appendChild(lbl);
+    const parts = [1, 2, 3, 4].map(id => {
+      const c = tileCounts[String(id)] || 0;
+      const tick = c >= required ? ' ✅' : '';
+      return `${getTeamBullet(id)} ${c}/${required}${tick}`;
+    });
+    p.appendChild(document.createTextNode(parts.join('  ')));
+    body.appendChild(p);
+  }
 
   if (teamsHere.length) {
     const p = document.createElement('p');

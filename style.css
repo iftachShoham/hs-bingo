@@ -439,7 +439,8 @@ body {
 .tile-num,
 .tile-content,
 .tile-pawns,
-.completion-bar {
+.completion-bar,
+.tile-progress {
   position: relative;
   z-index: 1;
 }
@@ -466,6 +467,26 @@ body {
 
 .completion-bar { display: flex; gap: 1px; margin-top: 1px; }
 .comp-dot       { font-size: 7px; color: var(--border); line-height: 1; }
+
+/* Multi-completion progress label on the board grid */
+.tile-progress {
+  font-size: 7px;
+  line-height: 1;
+  margin-top: 1px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* "Submissions: X / Y" line in the player task box (sits above #task-status) */
+.task-submissions {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
 .comp-done-1 { color: var(--t1); }
 .comp-done-2 { color: var(--t2); }
 .comp-done-3 { color: var(--t3); }
@@ -1169,6 +1190,7 @@ body {
   .tile { padding: 2px; border-radius: 0; }
   .tile-num { font-size: 11px; }
   .tile-content { font-size: 7px; -webkit-line-clamp: 1; }
+  .tile-progress { font-size: 6px; }
   .pawn { font-size: 10px; }
   .snake-badge { font-size: 11px; top: 0; right: 1px; }
   .rat-badge   { font-size: 9px;  top: 0; right: 1px; }
