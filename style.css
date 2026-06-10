@@ -415,6 +415,16 @@ body {
 }
 .tile:hover .tile-tooltip { display: block; }
 
+.tile-bg-img {
+  position: absolute;
+  inset: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.18;
+  pointer-events: none;
+}
+
 .tile-num {
   font-weight: 700;
   font-size: 13px;
