@@ -37,7 +37,25 @@ const state = {
   activeTab:  'board',
   playerName: null,   // optional display name entered at login
   proofFile:  null,   // pending image File for proof upload
+  tileImages: null,   // Map<normalizedTaskName, imagePath> — loaded once on login
 };
+
+// ── Tile images — loaded once, matched by normalised task name ──
+async function loadTileImages() {
+  try {
+    const res  = await fetch('tile-images.json');
+    const data = await res.json();
+    const map  = new Map();
+    for (const entry of Object.values(data)) {
+      if (entry.name && entry.image) {
+        map.set(entry.name.toLowerCase().trim(), entry.image);
+      }
+    }
+    state.tileImages = map;
+  } catch (_) {
+    state.tileImages = new Map();
+  }
+}
 
 // ══════════════════════════════════════════════════════
 //  API — calls Apps Script directly
@@ -208,8 +226,11 @@ function enterGame() {
   // Apply mobile tab layout before first render
   if (isMobile()) switchTab('board');
 
-  refreshBoard().then(() => {
-    state.pollTimer = setInterval(refreshBoard, 6000);
+  // Load tile images once, then kick off polling
+  loadTileImages().then(() => {
+    refreshBoard().then(() => {
+      state.pollTimer = setInterval(refreshBoard, 6000);
+    });
   });
 }
 
@@ -366,6 +387,17 @@ function renderBoard(data) {
       // Task content
       const content = (tileContentMap && tileContentMap[tileNum]) || "";
       if (content) {
+        // Background image watermark (behind all text)
+        if (state.tileImages) {
+          const imgPath = state.tileImages.get(content.toLowerCase().trim());
+          if (imgPath) {
+            const bgEl = document.createElement("div");
+            bgEl.className = "tile-bg-img";
+            bgEl.style.backgroundImage = `url('${imgPath.replace(/'/g, "%27")}')`;
+            cell.appendChild(bgEl);
+          }
+        }
+
         const cEl = document.createElement("div");
         cEl.className = "tile-content";
         cEl.textContent = content;
