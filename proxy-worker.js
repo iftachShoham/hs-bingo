@@ -107,7 +107,17 @@ function buildWebDiscordMessage(req, data) {
   // Complete: build clean message — avoids the "someone (someone)" format from Apps Script
   if (req.command === "complete" && data.result) {
     const r = data.result;
-    let msg = `✅ **${r.team_name}**${player} completed Tile ${r.tile}: *${r.tile_content || ""}*`;
+    const count = r.completion_count || 1;
+    const required = r.amount_required || 1;
+    const isPartial = count < required;
+    let msg;
+    if (isPartial) {
+      const remaining = required - count;
+      msg = `🔄 **${r.team_name}**${player} partially completed Tile ${r.tile}: *${r.tile_content || ""}* (${count}/${required} done, ${remaining} left)`;
+    } else {
+      const countLabel = required > 1 ? ` (${count}/${required})` : "";
+      msg = `✅ **${r.team_name}**${player} completed Tile ${r.tile}: *${r.tile_content || ""}*${countLabel}`;
+    }
     if (r.proof_url) msg += `\n🖼️ ${r.proof_url}`;
     return msg;
   }
