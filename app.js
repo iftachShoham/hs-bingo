@@ -641,12 +641,13 @@ async function doRoll() {
             ? state.tileImages.get(tileContent.toLowerCase().trim())
             : null;
           const credit = state.playerName ? ` *(${state.playerName} via web)*` : " *(via web)*";
-          let discordContent = (result.message || "") + credit;
-          if (imgPath) discordContent += "\n" + new URL(imgPath, window.location.href).href;
+          const discordContent = (result.message || "") + credit;
+          const payload = { content: discordContent };
+          if (imgPath) payload.embeds = [{ image: { url: new URL(imgPath, window.location.href).href } }];
           fetch(webhookUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: discordContent })
+            body: JSON.stringify(payload)
           }).catch(() => {});
         }
       }
