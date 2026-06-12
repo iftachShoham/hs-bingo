@@ -29,15 +29,16 @@ function getTeamBullet(id) { return TEAM_BULLETS[Number(id)] || "⚪"; }
 
 // ── App state ──
 const state = {
-  channelId:  null,   // the logged-in team's channel_id (or ADMIN_CODE)
-  team:       null,   // { team_id, team_name, current_tile }
-  isAdmin:    false,
-  boardData:  null,
-  pollTimer:  null,
-  activeTab:  'board',
-  playerName: null,   // optional display name entered at login
-  proofFile:  null,   // pending image File for proof upload
-  tileImages: null,   // Map<normalizedTaskName, imagePath> — loaded once on login
+  channelId:       null,   // the logged-in team's channel_id (or ADMIN_CODE)
+  team:            null,   // { team_id, team_name, current_tile }
+  isAdmin:         false,
+  boardData:       null,
+  pollTimer:       null,
+  activeTab:       'board',
+  playerName:      null,   // optional display name entered at login
+  proofFile:       null,   // pending image File for proof upload
+  tileImages:      null,   // Map<normalizedTaskName, imagePath> — loaded once on login
+  prevTaskContent: null,   // tracks last rendered task to detect ACB trigger
 };
 
 // ── Tile images — loaded once, matched by normalised task name ──
@@ -185,7 +186,7 @@ function showLoginError(msg) {
 
 function logout() {
   clearInterval(state.pollTimer);
-  Object.assign(state, { channelId: null, team: null, isAdmin: false, boardData: null, pollTimer: null, playerName: null, proofFile: null });
+  Object.assign(state, { channelId: null, team: null, isAdmin: false, boardData: null, pollTimer: null, playerName: null, proofFile: null, prevTaskContent: null });
   localStorage.removeItem("hs_cid");
   document.getElementById("game-screen").classList.add("hidden");
   document.getElementById("login-screen").classList.remove("hidden");
@@ -551,6 +552,14 @@ function renderTaskBox(data) {
   const content = myTile > 0 ? ((data.tileContentMap || {})[myTile] || "No task text found") : "—";
   document.getElementById("task-desc").textContent = content;
 
+  // Play ACB jingle when landing on the ACB tile for the first time this session
+  if (state.prevTaskContent !== null &&
+      content.toLowerCase().trim() === 'acb' &&
+      state.prevTaskContent.toLowerCase().trim() !== 'acb') {
+    playSound('old-armadyl-eye-spec-made-with-Voicemod.mp3');
+  }
+  state.prevTaskContent = content;
+
   const required = Number((data.tileAmountMap || {})[String(myTile)] || 1);
   const count    = Number(((data.completionCountsByTile || {})[String(myTile)] || {})[String(myId)] || 0);
 
@@ -715,6 +724,7 @@ async function doComplete() {
     addFeedEvent(result.success ? "ok" : "err", result.message || "Complete done.");
 
     if (result.success) {
+      playSound('task_completed.wav');
       clearProof();
       document.getElementById("proof-url").value = "";
       refreshBoard();
@@ -857,6 +867,15 @@ async function doReset() {
     setActionResult("❌ " + err.message);
     addFeedEvent("err", err.message);
   }
+}
+
+// ══════════════════════════════════════════════════════
+//  AUDIO
+// ══════════════════════════════════════════════════════
+
+function playSound(src) {
+  const audio = new Audio(src);
+  audio.play().catch(() => {});
 }
 
 // ══════════════════════════════════════════════════════
