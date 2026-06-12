@@ -724,7 +724,7 @@ async function doComplete() {
     addFeedEvent(result.success ? "ok" : "err", result.message || "Complete done.");
 
     if (result.success) {
-      playSound('task_completed.wav');
+      playSound('task_completed.mp3');
       clearProof();
       document.getElementById("proof-url").value = "";
       refreshBoard();
