@@ -616,7 +616,10 @@ async function doRoll() {
   setBusy(btn, true, "🎲 Rolling…");
   setRollResult("🎲 Rolling…");
   try {
-    const result = await apiCommand("roll");
+    // Non-admin: suppress the proxy's Discord post so we can send a combined
+    // message (roll text + tile image) via the team's webhook ourselves below.
+    const extra = !state.isAdmin ? { source: "web-client" } : {};
+    const result = await apiCommand("roll", extra);
     setRollResult(result.message || JSON.stringify(result));
     addFeedEvent(result.success ? "ok" : "err", result.message || "Roll done.");
     if (result.success) {
@@ -624,41 +627,43 @@ async function doRoll() {
       const hasSnakeOrRat = msg.includes("snake") || msg.includes("rat");
       if (msg.includes("snake"))     showBoardGif("snake-dance.gif");
       else if (msg.includes("rat"))  showBoardGif("rat-dance.gif");
+
+      // Post combined roll message + tile image to the team's Discord webhook.
+      // result.result.tile_content is available immediately — no need to wait for refreshBoard.
+      if (!state.isAdmin && state.team) {
+        const teamData = state.boardData?.teams?.find(
+          t => Number(t.team_id) === Number(state.team.team_id)
+        );
+        const webhookUrl = teamData?.webhook_url;
+        if (webhookUrl) {
+          const tileContent = result.result?.tile_content;
+          const imgPath = tileContent && state.tileImages
+            ? state.tileImages.get(tileContent.toLowerCase().trim())
+            : null;
+          const credit = state.playerName ? ` *(${state.playerName} via web)*` : " *(via web)*";
+          let discordContent = (result.message || "") + credit;
+          if (imgPath) discordContent += "\n" + new URL(imgPath, window.location.href).href;
+          fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: discordContent })
+          }).catch(() => {});
+        }
+      }
+
       await refreshBoard();
 
       // Auto-open the modal for the tile that was just landed on
       if (!state.isAdmin && state.team) {
         const newTile = Number(state.team.current_tile);
         if (newTile >= 1 && newTile <= 100) {
-          // Delay modal until after the snake/rat GIF overlay finishes
           const popDelay = hasSnakeOrRat ? 3200 : 400;
           setTimeout(() => {
             const tileEl = document.querySelector(`.tile[data-tile="${newTile}"]`);
             if (tileEl) tileEl.click();
           }, popDelay);
-
-          // Post tile image directly to the team's Discord webhook
-          const tileContent = state.boardData?.tileContentMap?.[newTile];
-          const imgPath = tileContent && state.tileImages
-            ? state.tileImages.get(tileContent.toLowerCase().trim())
-            : null;
-          if (imgPath) {
-            const teamData = state.boardData?.teams?.find(
-              t => Number(t.team_id) === Number(state.team.team_id)
-            );
-            const webhookUrl = teamData?.webhook_url;
-            if (webhookUrl) {
-              const imageUrl = new URL(imgPath, window.location.href).href;
-              fetch(webhookUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ content: imageUrl })
-              }).catch(() => {});
-            }
-          }
         }
       }
-
     }
   } catch (err) {
     setRollResult("❌ " + err.message);
