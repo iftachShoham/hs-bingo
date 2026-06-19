@@ -25,6 +25,8 @@
       <p class="login-sub">Snakes &amp; Rats — Team Portal</p>
       <input id="team-code-input" type="text" placeholder="Paste your Discord channel ID" autocomplete="off" spellcheck="false" />
       <input id="player-name-input" type="text" placeholder="Your name (optional)" autocomplete="off" spellcheck="false" style="margin-top:8px;" />
+      <input id="player-password-input" type="password" placeholder="Team password (if required)" autocomplete="current-password" style="margin-top:8px; display:none;" />
+      <p id="password-hint" class="login-sub hidden" style="font-size:0.8rem; color:#aaa; margin-top:4px; margin-bottom:0;">This team requires a password to play.</p>
       <button id="login-btn">Enter Game</button>
       <p id="login-error" class="error-msg hidden"></p>
     </div>
@@ -99,6 +101,12 @@
             </div>
           </div>
 
+          <div id="early-completion-row" class="hidden">
+            <label class="early-completion-label">
+              <input type="checkbox" id="early-completion-check" />
+              🏆 Early completion — counts as all remaining submissions
+            </label>
+          </div>
           <button class="btn-action btn-complete" id="btn-complete" onclick="doComplete()">✅ Complete Task</button>
           <div id="complete-result" class="action-result hidden"></div>
         </section>
@@ -120,6 +128,21 @@
               <input id="admin-tile" type="number" min="1" max="100" placeholder="Tile 1-100" class="admin-tile-input" />
               <button class="btn-action btn-admin" onclick="doMove()">➡️ Move to tile</button>
             </div>
+            <div class="admin-section-divider"></div>
+            <label class="admin-label">Revert completion</label>
+            <div class="admin-move-row">
+              <input id="admin-revert-tile" type="number" min="1" max="100" placeholder="Tile (blank = current)" class="admin-tile-input" />
+              <button class="btn-action btn-admin" onclick="doRevertComplete()">↩️ Revert Last</button>
+            </div>
+            <div id="admin-revert-result" class="action-result hidden"></div>
+            <div class="admin-section-divider"></div>
+            <label class="admin-label">Set team password</label>
+            <div class="admin-move-row">
+              <input id="admin-password-input" type="password" placeholder="New password (blank to remove)" class="admin-tile-input" style="flex:2;" />
+              <button class="btn-action btn-admin" onclick="doSetPassword()">🔒 Set</button>
+            </div>
+            <div id="admin-password-result" class="action-result hidden"></div>
+            <div class="admin-section-divider"></div>
             <button class="btn-action btn-reset" onclick="doReset()">🔄 Reset Entire Game</button>
           </div>
         </section>
@@ -162,6 +185,24 @@
       <div id="tile-modal-task"></div>
       <div id="tile-modal-img" class="hidden"></div>
       <div id="tile-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ── Rat Wheel Overlay ── -->
+  <div id="rat-wheel-overlay" class="hidden" onclick="dismissRatWheel()">
+    <div id="rat-wheel-card" onclick="event.stopPropagation()">
+      <div id="rat-wheel-title">🐀 Rat Triggered!</div>
+      <div id="rat-wheel-spinner-wrap">
+        <div id="rat-wheel-pointer">▼</div>
+        <canvas id="rat-wheel-canvas" width="300" height="300"></canvas>
+      </div>
+      <div id="rat-wheel-reveal" class="hidden">
+        <div id="rat-wheel-victim-name"></div>
+        <div id="rat-wheel-victim-detail"></div>
+      </div>
+      <button class="btn-ghost" id="rat-wheel-dismiss-btn" onclick="dismissRatWheel()" style="display:none; margin-top:12px;">
+        Continue
+      </button>
     </div>
   </div>
 

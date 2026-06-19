@@ -29,16 +29,17 @@ function getTeamBullet(id) { return TEAM_BULLETS[Number(id)] || "⚪"; }
 
 // ── App state ──
 const state = {
-  channelId:       null,   // the logged-in team's channel_id (or ADMIN_CODE)
-  team:            null,   // { team_id, team_name, current_tile }
-  isAdmin:         false,
-  boardData:       null,
-  pollTimer:       null,
-  activeTab:       'board',
-  playerName:      null,   // optional display name entered at login
-  proofFile:       null,   // pending image File for proof upload
-  tileImages:      null,   // Map<normalizedTaskName, imagePath> — loaded once on login
-  prevTaskContent: null,   // tracks last rendered task to detect ACB trigger
+  channelId:          null,   // the logged-in team's channel_id (or ADMIN_CODE)
+  team:               null,   // { team_id, team_name, current_tile }
+  isAdmin:            false,
+  boardData:          null,
+  pollTimer:          null,
+  activeTab:          'board',
+  playerName:         null,   // optional display name entered at login
+  proofFile:          null,   // pending image File for proof upload
+  tileImages:         null,   // Map<normalizedTaskName, imagePath> — loaded once on login
+  prevTaskContent:    null,   // tracks last rendered task to detect ACB trigger
+  playerPasswordHash: null,   // SHA-256 hex hash of the team password (null = no password)
 };
 
 // ── Tile images — loaded once, matched by normalised task name ──
@@ -82,11 +83,12 @@ async function apiCommand(command, extra = {}) {
       method:   "POST",
       headers:  { "Content-Type": "text/plain;charset=utf-8" },
       body:     JSON.stringify({
-        [authKey]:   CONFIG.WEB_SECRET,
-        channel_id:  state.channelId,
+        [authKey]:            CONFIG.WEB_SECRET,
+        channel_id:           state.channelId,
         command,
-        player_name: state.playerName || "",
-        source:      "web",
+        player_name:          state.playerName || "",
+        player_password_hash: state.playerPasswordHash || "",
+        source:               "web",
         ...extra
       }),
       redirect: "follow"
@@ -161,6 +163,41 @@ async function login() {
       return;
     }
 
+    // Password check: skip if auto-login already pre-set the verified hash
+    if (match.player_password_hash && match.player_password_hash !== "") {
+      if (state.playerPasswordHash && state.playerPasswordHash === match.player_password_hash) {
+        // Hash already verified from localStorage — skip re-prompt
+      } else {
+        const passwordInput = document.getElementById("player-password-input");
+        const passwordValue = passwordInput ? passwordInput.value : "";
+
+        if (!passwordValue) {
+          if (passwordInput) { passwordInput.style.display = ""; passwordInput.focus(); }
+          const hint = document.getElementById("password-hint");
+          if (hint) hint.classList.remove("hidden");
+          showLoginError("This team requires a password. Enter it and try again.");
+          return;
+        }
+
+        const encoder = new TextEncoder();
+        const hashBuf = await crypto.subtle.digest("SHA-256", encoder.encode(passwordValue));
+        const hashHex = Array.from(new Uint8Array(hashBuf))
+                            .map(b => b.toString(16).padStart(2, "0"))
+                            .join("");
+
+        if (hashHex !== match.player_password_hash) {
+          showLoginError("Incorrect password. Try again.");
+          return;
+        }
+
+        state.playerPasswordHash = hashHex;
+        localStorage.setItem("hs_pwh", hashHex);
+      }
+    } else {
+      state.playerPasswordHash = null;
+      localStorage.removeItem("hs_pwh");
+    }
+
     state.channelId  = code;
     state.isAdmin    = false;
     state.team       = { team_id: match.team_id, team_name: match.team_name, current_tile: match.current_tile };
@@ -186,8 +223,9 @@ function showLoginError(msg) {
 
 function logout() {
   clearInterval(state.pollTimer);
-  Object.assign(state, { channelId: null, team: null, isAdmin: false, boardData: null, pollTimer: null, playerName: null, proofFile: null, prevTaskContent: null });
+  Object.assign(state, { channelId: null, team: null, isAdmin: false, boardData: null, pollTimer: null, playerName: null, proofFile: null, prevTaskContent: null, playerPasswordHash: null });
   localStorage.removeItem("hs_cid");
+  localStorage.removeItem("hs_pwh");
   document.getElementById("game-screen").classList.add("hidden");
   document.getElementById("login-screen").classList.remove("hidden");
   document.getElementById("team-code-input").value = "";
@@ -594,6 +632,16 @@ function renderTaskBox(data) {
       : "⏳ Not completed yet. Use Complete when done.";
   }
   statusEl.textContent = status;
+
+  const earlyRow = document.getElementById("early-completion-row");
+  if (earlyRow) {
+    const showEarly = myTile > 0 && required > 1 && count < required;
+    earlyRow.classList.toggle("hidden", !showEarly);
+    if (!showEarly) {
+      const cb = document.getElementById("early-completion-check");
+      if (cb) cb.checked = false;
+    }
+  }
 }
 
 function updateHeaderTile() {
@@ -634,8 +682,17 @@ async function doRoll() {
     if (result.success) {
       const msg = (result.message || "").toLowerCase();
       const hasSnakeOrRat = msg.includes("snake") || msg.includes("rat");
-      if (msg.includes("snake"))     showBoardGif("snake-dance.gif");
-      else if (msg.includes("rat"))  showBoardGif("rat-dance.gif");
+      if (msg.includes("snake")) {
+        showBoardGif("snake-dance.gif");
+      } else if (msg.includes("rat") && result.result?.rat_result) {
+        clearInterval(state.pollTimer);
+        state.pollTimer = null;
+        await spinWheelForRat(result.result.rat_result);
+        showBoardGif("rat-dance.gif");
+        state.pollTimer = setInterval(refreshBoard, 6000);
+      } else if (msg.includes("rat")) {
+        showBoardGif("rat-dance.gif");
+      }
 
       // Post combined roll message + tile image to the team's Discord webhook.
       // result.result.tile_content is available immediately — no need to wait for refreshBoard.
@@ -697,6 +754,136 @@ function showBoardGif(filename) {
   }, 3000);
 }
 
+function spinWheelForRat(ratResult) {
+  return new Promise(resolve => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      _showRatWheelResult(ratResult);
+      setTimeout(resolve, 2500);
+      return;
+    }
+
+    const overlay    = document.getElementById("rat-wheel-overlay");
+    const canvas     = document.getElementById("rat-wheel-canvas");
+    const ctx        = canvas.getContext("2d");
+    const reveal     = document.getElementById("rat-wheel-reveal");
+    const dismissBtn = document.getElementById("rat-wheel-dismiss-btn");
+
+    reveal.classList.add("hidden");
+    dismissBtn.style.display = "none";
+    overlay.classList.remove("hidden");
+
+    const teams = (state.boardData?.teams || []).filter(t => Number(t.current_tile) >= 0);
+    if (teams.length === 0) {
+      _showRatWheelResult(ratResult);
+      setTimeout(resolve, 2500);
+      return;
+    }
+
+    const segmentCount = teams.length;
+    const segmentAngle = (2 * Math.PI) / segmentCount;
+
+    const victimIndex = teams.findIndex(t => Number(t.team_id) === Number(ratResult.victim_team_id));
+    const targetSegmentIndex = victimIndex >= 0 ? victimIndex : 0;
+
+    function drawWheel(rotationOffset) {
+      const cx = canvas.width  / 2;
+      const cy = canvas.height / 2;
+      const r  = cx - 4;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      teams.forEach((team, i) => {
+        const startAngle = rotationOffset + i * segmentAngle - Math.PI / 2;
+        const endAngle   = startAngle + segmentAngle;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = TEAM_COLORS[Number(team.team_id)] || "#555";
+        ctx.fill();
+        ctx.strokeStyle = "#1a1a2e";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        const midAngle = startAngle + segmentAngle / 2;
+        const labelR   = r * 0.65;
+        const tx = cx + Math.cos(midAngle) * labelR;
+        const ty = cy + Math.sin(midAngle) * labelR;
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate(midAngle + Math.PI / 2);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 13px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(getTeamBullet(team.team_id), 0, 0);
+        ctx.restore();
+      });
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 18, 0, 2 * Math.PI);
+      ctx.fillStyle = "#1a1a2e";
+      ctx.fill();
+      ctx.strokeStyle = "#c8a84b";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    const finalOffset   = -(targetSegmentIndex * segmentAngle + segmentAngle / 2);
+    const totalRotation = finalOffset - 5 * 2 * Math.PI;
+
+    const SPIN_DURATION_MS = 3500;
+    const startTime = performance.now();
+
+    function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+    function animate(now) {
+      const elapsed  = now - startTime;
+      const progress = Math.min(elapsed / SPIN_DURATION_MS, 1);
+      const eased    = easeOutCubic(progress);
+
+      drawWheel(totalRotation * eased);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        drawWheel(finalOffset);
+        setTimeout(() => {
+          _showRatWheelResult(ratResult);
+          dismissBtn.style.display = "";
+          setTimeout(() => { dismissRatWheel(); resolve(); }, 4000);
+        }, 400);
+      }
+    }
+
+    drawWheel(0);
+    requestAnimationFrame(animate);
+  });
+}
+
+function _showRatWheelResult(ratResult) {
+  const reveal   = document.getElementById("rat-wheel-reveal");
+  const nameEl   = document.getElementById("rat-wheel-victim-name");
+  const detailEl = document.getElementById("rat-wheel-victim-detail");
+
+  if (ratResult.self_rat) {
+    nameEl.textContent   = `😱 ${ratResult.victim_team_name}`;
+    detailEl.textContent = "You ratted yourselves! Rolled " + ratResult.die_roll +
+      " backwards: " + ratResult.victim_from + " → " + ratResult.victim_to;
+  } else {
+    nameEl.textContent   = `🐀 ${ratResult.victim_team_name} got ratted!`;
+    detailEl.textContent = "Rolled " + ratResult.die_roll +
+      " backwards: " + ratResult.victim_from + " → " + ratResult.victim_to;
+  }
+
+  reveal.classList.remove("hidden");
+}
+
+function dismissRatWheel() {
+  document.getElementById("rat-wheel-overlay").classList.add("hidden");
+}
+
 async function doComplete() {
   const proofUrl = document.getElementById("proof-url").value.trim();
   const hasFile  = !!state.proofFile;
@@ -705,6 +892,8 @@ async function doComplete() {
     setCompleteResult("❌ Add a photo or paste a proof URL first.");
     return;
   }
+
+  const isEarlyCompletion = document.getElementById("early-completion-check")?.checked === true;
 
   const btn = document.getElementById("btn-complete");
   setBusy(btn, true, "✅ Submitting…");
@@ -718,7 +907,11 @@ async function doComplete() {
       finalUrl = await uploadProofImage(state.proofFile);
     }
 
-    const result = await apiCommand("complete", { proof_url: finalUrl, username: state.playerName || "" });
+    const result = await apiCommand("complete", {
+      proof_url:        finalUrl,
+      username:         state.playerName || "",
+      early_completion: isEarlyCompletion
+    });
     setCompleteResult(result.message || JSON.stringify(result));
 
     addFeedEvent(result.success ? "ok" : "err", result.message || "Complete done.");
@@ -727,6 +920,11 @@ async function doComplete() {
       playSound('task_completed.mp3');
       clearProof();
       document.getElementById("proof-url").value = "";
+      const cb = document.getElementById("early-completion-check");
+      if (cb) cb.checked = false;
+      if (isEarlyCompletion) {
+        setCompleteResult("🏆 Early completion! Tile fully completed — you can roll!");
+      }
       refreshBoard();
     }
   } catch (err) {
@@ -865,6 +1063,78 @@ async function doReset() {
     if (result.success) refreshBoard();
   } catch (err) {
     setActionResult("❌ " + err.message);
+    addFeedEvent("err", err.message);
+  }
+}
+
+async function doRevertComplete() {
+  const targetChannelId = document.getElementById("admin-target").value;
+  if (!targetChannelId) { setRevertResult("❌ Select a team first."); return; }
+
+  const tileInput = document.getElementById("admin-revert-tile").value.trim();
+  const tile = tileInput ? Number(tileInput) : null;
+
+  const teamOption = document.querySelector(`#admin-target option[value="${targetChannelId}"]`);
+  const teamLabel  = teamOption ? teamOption.textContent : targetChannelId;
+  const tileLabel  = tile ? `tile ${tile}` : "their current tile";
+
+  if (!confirm(`Remove the most recent completion entry for ${teamLabel} on ${tileLabel}?`)) return;
+
+  setRevertResult("↩️ Reverting…");
+
+  try {
+    const extra  = tile ? { channel_id: targetChannelId, tile } : { channel_id: targetChannelId };
+    const result = await apiCommand("revert_complete", extra);
+
+    const el = document.getElementById("admin-revert-result");
+    if (el) { el.textContent = result.message || JSON.stringify(result); el.classList.remove("hidden"); }
+
+    addFeedEvent(result.success ? "sys" : "err", result.message || "Revert done.");
+    if (result.success) refreshBoard();
+  } catch (err) {
+    setRevertResult("❌ " + err.message);
+    addFeedEvent("err", err.message);
+  }
+}
+
+function setRevertResult(text) {
+  const el = document.getElementById("admin-revert-result");
+  if (el) { el.textContent = text; el.classList.remove("hidden"); }
+}
+
+async function doSetPassword() {
+  const targetChannelId = document.getElementById("admin-target").value;
+  if (!targetChannelId) {
+    const el = document.getElementById("admin-password-result");
+    if (el) { el.textContent = "❌ Select a team first."; el.classList.remove("hidden"); }
+    return;
+  }
+
+  const rawPassword = document.getElementById("admin-password-input").value;
+
+  let hashHex = "";
+  if (rawPassword) {
+    const encoder = new TextEncoder();
+    const hashBuf = await crypto.subtle.digest("SHA-256", encoder.encode(rawPassword));
+    hashHex = Array.from(new Uint8Array(hashBuf))
+                   .map(b => b.toString(16).padStart(2, "0"))
+                   .join("");
+  }
+
+  const action = hashHex ? "set password" : "remove password";
+  if (!confirm(`${action} for selected team?`)) return;
+
+  try {
+    const result = await apiCommand("set_password", {
+      channel_id:           targetChannelId,
+      player_password_hash: hashHex
+    });
+    const el = document.getElementById("admin-password-result");
+    if (el) { el.textContent = result.message || JSON.stringify(result); el.classList.remove("hidden"); }
+    addFeedEvent(result.success ? "sys" : "err", result.message || "Password update done.");
+  } catch (err) {
+    const el = document.getElementById("admin-password-result");
+    if (el) { el.textContent = "❌ " + err.message; el.classList.remove("hidden"); }
     addFeedEvent("err", err.message);
   }
 }
@@ -1091,9 +1361,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Auto-login from localStorage
-  const saved = localStorage.getItem("hs_cid");
+  const saved    = localStorage.getItem("hs_cid");
+  const savedPwh = localStorage.getItem("hs_pwh");
   if (saved) {
     document.getElementById("team-code-input").value = saved;
+    if (savedPwh) state.playerPasswordHash = savedPwh;
     login();
   }
 });
