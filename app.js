@@ -3,19 +3,19 @@
 // ══════════════════════════════════════════════════════
 const CONFIG = {
   // Your Google Apps Script web app URL
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbw0ZAhadYwG1z6sYczshDN5AAG9s-NQtFbDOUFkmaOwT6qEn5Qxm6FAhUOt0zMbrb7V7A/exec",
+  APPS_SCRIPT_URL: "%%APPS_SCRIPT_URL%%",
 
   // The WEB_APP_SECRET value from line 7 of your Apps Script
-  WEB_SECRET: "TestSecret1996boris",
+  WEB_SECRET: "%%WEB_SECRET%%",
 
   // Whoever types this on the login screen gets Game Master controls
-  ADMIN_CODE: "gamemaster",
+  ADMIN_CODE: "%%ADMIN_CODE%%",
 
   // Free API key from https://api.imgbb.com — needed for image proof uploads
-  IMGBB_KEY: "10ab068f4a22b9c256c83eeddfcbfd75",
+  IMGBB_KEY: "%%IMGBB_KEY%%",
 
   // URL of the proxy Cloudflare Worker (routes commands + forwards to Discord)
-  PROXY_URL: "https://high-society-web-portal-proxy.borisvdh96.workers.dev",
+  PROXY_URL: "%%PROXY_URL%%",
 
 };
 
