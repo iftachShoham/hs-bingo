@@ -312,7 +312,7 @@ function renderTaskBox(data) {
   if (state.prevTaskContent !== null &&
       content.toLowerCase().trim() === 'acb' &&
       state.prevTaskContent.toLowerCase().trim() !== 'acb') {
-    playSound('old-armadyl-eye-spec-made-with-Voicemod.mp3');
+    playSound('assets/audio/old-armadyl-eye-spec-made-with-Voicemod.mp3');
   }
   state.prevTaskContent = content;
 

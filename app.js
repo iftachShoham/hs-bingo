@@ -594,7 +594,7 @@ function renderTaskBox(data) {
   if (state.prevTaskContent !== null &&
       content.toLowerCase().trim() === 'acb' &&
       state.prevTaskContent.toLowerCase().trim() !== 'acb') {
-    playSound('old-armadyl-eye-spec-made-with-Voicemod.mp3');
+    playSound('assets/audio/old-armadyl-eye-spec-made-with-Voicemod.mp3');
   }
   state.prevTaskContent = content;
 
@@ -683,15 +683,15 @@ async function doRoll() {
       const msg = (result.message || "").toLowerCase();
       const hasSnakeOrRat = msg.includes("snake") || msg.includes("rat");
       if (msg.includes("snake")) {
-        showBoardGif("snake-dance.gif");
+        showBoardGif("assets/gifs/snake-dance.gif");
       } else if (msg.includes("rat") && result.result?.rat_result) {
         clearInterval(state.pollTimer);
         state.pollTimer = null;
         await spinWheelForRat(result.result.rat_result);
-        showBoardGif("rat-dance.gif");
+        showBoardGif("assets/gifs/rat-dance.gif");
         state.pollTimer = setInterval(refreshBoard, 6000);
       } else if (msg.includes("rat")) {
-        showBoardGif("rat-dance.gif");
+        showBoardGif("assets/gifs/rat-dance.gif");
       }
 
       // Post combined roll message + tile image to the team's Discord webhook.
@@ -917,7 +917,7 @@ async function doComplete() {
     addFeedEvent(result.success ? "ok" : "err", result.message || "Complete done.");
 
     if (result.success) {
-      playSound('task_completed.mp3');
+      playSound('assets/audio/task_completed.mp3');
       clearProof();
       document.getElementById("proof-url").value = "";
       const cb = document.getElementById("early-completion-check");
