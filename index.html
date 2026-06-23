@@ -19,6 +19,39 @@
 
   <!-- ── Login Screen ── -->
   <div id="login-screen">
+
+    <!-- Bomb countdown -->
+    <div id="bomb-countdown">
+      <div class="bomb-title">
+        <span class="bomb-icon">💣</span>
+        <span>GAME STARTS IN</span>
+        <span class="bomb-icon">💣</span>
+      </div>
+      <div class="countdown-display">
+        <div class="cd-unit">
+          <div class="cd-digits" id="cd-days">--</div>
+          <div class="cd-unit-label">DAYS</div>
+        </div>
+        <div class="cd-colon">:</div>
+        <div class="cd-unit">
+          <div class="cd-digits" id="cd-hours">--</div>
+          <div class="cd-unit-label">HRS</div>
+        </div>
+        <div class="cd-colon">:</div>
+        <div class="cd-unit">
+          <div class="cd-digits" id="cd-mins">--</div>
+          <div class="cd-unit-label">MIN</div>
+        </div>
+        <div class="cd-colon">:</div>
+        <div class="cd-unit">
+          <div class="cd-digits" id="cd-secs">--</div>
+          <div class="cd-unit-label">SEC</div>
+        </div>
+      </div>
+      <div class="bomb-fuse"><div class="fuse-ember"></div></div>
+      <div class="bomb-sub">17 July 2026 &middot; 19:00 BST &middot; High Society</div>
+    </div>
+
     <div class="login-box">
       <div class="login-logo">🐀</div>
       <h1>High Society</h1>
@@ -206,6 +239,7 @@
     </div>
   </div>
 
+  <script src="js/countdown.js"></script>
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/snakes.js"></script>
