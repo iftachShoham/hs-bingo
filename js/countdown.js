@@ -22,7 +22,7 @@
     var diff = TARGET - Date.now();
 
     if (diff <= 0) {
-      wrap.innerHTML = '<div class="bomb-live">💥 &nbsp;GAME IS LIVE!&nbsp; 💥</div>';
+      wrap.remove();
       return;
     }
 
