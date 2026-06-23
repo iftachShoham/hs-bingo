@@ -9,7 +9,7 @@ const CONFIG = {
   WEB_SECRET: "TestSecret1996boris",
 
   // Whoever types this on the login screen gets Game Master controls
-  ADMIN_CODE: "gamemaster",
+  ADMIN_CODE: "softpapihasbigpipiwhennotsoft",
 
   // Free API key from https://api.imgbb.com — needed for image proof uploads
   IMGBB_KEY: "10ab068f4a22b9c256c83eeddfcbfd75",
