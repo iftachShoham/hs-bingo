@@ -157,11 +157,11 @@
           <h3>📊 Statistics</h3>
           <div class="stat-block">
             <div class="stat-block-label">Completions per Day</div>
-            <canvas id="chart-per-day"></canvas>
+            <canvas id="chart-per-day" class="chart-zoomable" onclick="openChartModal('per-day')" title="Click to enlarge"></canvas>
           </div>
           <div class="stat-block">
             <div class="stat-block-label">Cumulative Completions</div>
-            <canvas id="chart-running"></canvas>
+            <canvas id="chart-running" class="chart-zoomable" onclick="openChartModal('running')" title="Click to enlarge"></canvas>
           </div>
           <div class="stat-block">
             <div class="stat-block-label">🏅 Top Players</div>
@@ -241,6 +241,16 @@
       <div id="team-history-name"></div>
       <div class="team-history-subtitle">Recent completions</div>
       <div id="team-history-tiles"></div>
+    </div>
+  </div>
+
+  <!-- ── Chart Zoom Modal ── -->
+  <div id="chart-modal" class="hidden" onclick="closeChartModal()">
+    <div id="chart-modal-card" onclick="event.stopPropagation()">
+      <button class="tile-modal-close" onclick="closeChartModal()">✕</button>
+      <div id="chart-modal-title"></div>
+      <canvas id="chart-modal-canvas"></canvas>
+      <div id="chart-modal-legend" class="chart-legend" style="margin-top:14px;"></div>
     </div>
   </div>
 
