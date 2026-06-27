@@ -1288,6 +1288,81 @@ body {
 #tile-modal-body p { margin-bottom: 6px; }
 #tile-modal-body p:last-child { margin-bottom: 0; }
 
+/* ── Stats section ── */
+#stats-section { display: flex; flex-direction: column; gap: 12px; }
+
+.stat-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stat-block-label {
+  font-size: 9px;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+#chart-per-day,
+#chart-running {
+  display: block;
+  width: 100%;
+  border-radius: 1px;
+  border: 1px solid var(--border-lo);
+}
+
+/* Chart legend (shared, below charts) */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: -4px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+/* Player leaderboard */
+#player-leaderboard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #0d0a04;
+  border: 1px solid var(--border-lo);
+  border-radius: 1px;
+  font-size: 12px;
+}
+.lb-medal { font-size: 16px; flex-shrink: 0; }
+.lb-name  { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-count {
+  color: var(--accent);
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.lb-count::after { content: ' tiles'; font-weight: 400; color: var(--text-muted); font-size: 9px; }
+
 /* ── Admin section divider ── */
 .admin-section-divider {
   height: 1px;

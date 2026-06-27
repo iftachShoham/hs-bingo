@@ -60,6 +60,7 @@ function switchTab(name) {
     b.classList.toggle('active', b.dataset.tab === name)
   );
   if (isMobile()) _applyMobileTab(name);
+  if (name === 'stats') renderStats();
 }
 
 function _applyMobileTab(name) {
@@ -89,7 +90,8 @@ function _applyMobileTab(name) {
 
   const sectionsForTab = {
     play:  ['task-section', 'roll-section', 'complete-section', 'admin-section'],
-    teams: ['teams-section', 'admin-section']
+    teams: ['teams-section', 'admin-section'],
+    stats: ['stats-section']
   };
 
   (sectionsForTab[name] || []).forEach(id => {

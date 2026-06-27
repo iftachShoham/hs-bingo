@@ -337,13 +337,29 @@ function buildMiniTile(tileNum, content, teamIds = []) {
 function renderCompletionsBar(data) {
   const el = document.getElementById('completions-bar-tiles');
   if (!el) return;
-  const { completedByTile, tileContentMap } = data;
+  const tileContentMap = data.tileContentMap || {};
 
-  const entries = Object.entries(completedByTile || {})
-    .filter(([, ids]) => ids.length > 0)
-    .map(([tileStr, ids]) => ({ tile: Number(tileStr), ids: ids.map(Number) }))
-    .sort((a, b) => b.tile - a.tile)
-    .slice(0, 10);
+  let entries; // [{ tile, ids }] newest first
+
+  if (state.activityLog && state.activityLog.length > 0) {
+    // Use activity log for true chronological order (array is oldest→newest)
+    const seen = new Set();
+    entries = [];
+    for (let i = state.activityLog.length - 1; i >= 0 && entries.length < 10; i--) {
+      const ev = state.activityLog[i];
+      const key = `${ev.tile}-${ev.team_id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        entries.push({ tile: ev.tile, ids: [ev.team_id] });
+      }
+    }
+  } else {
+    entries = Object.entries(data.completedByTile || {})
+      .filter(([, ids]) => ids.length > 0)
+      .map(([tileStr, ids]) => ({ tile: Number(tileStr), ids: ids.map(Number) }))
+      .sort((a, b) => b.tile - a.tile)
+      .slice(0, 10);
+  }
 
   el.innerHTML = '';
   if (entries.length === 0) {
@@ -355,21 +371,34 @@ function renderCompletionsBar(data) {
   }
 
   entries.forEach(({ tile, ids }) => {
-    const content = (tileContentMap || {})[tile] || '';
-    el.appendChild(buildMiniTile(tile, content, ids));
+    el.appendChild(buildMiniTile(tile, tileContentMap[tile] || '', ids));
   });
 }
 
 function showTeamHistory(teamId, teamName) {
   const data = state.boardData;
   if (!data) return;
-  const { completedByTile, tileContentMap } = data;
+  const tileContentMap = data.tileContentMap || {};
 
-  const completed = Object.entries(completedByTile || {})
-    .filter(([, ids]) => ids.map(Number).includes(Number(teamId)))
-    .map(([tileStr]) => Number(tileStr))
-    .sort((a, b) => b - a)
-    .slice(0, 5);
+  let completed; // tile numbers, newest first
+
+  if (state.activityLog && state.activityLog.length > 0) {
+    const seen = new Set();
+    completed = [];
+    for (let i = state.activityLog.length - 1; i >= 0 && completed.length < 5; i--) {
+      const ev = state.activityLog[i];
+      if (Number(ev.team_id) === Number(teamId) && !seen.has(ev.tile)) {
+        seen.add(ev.tile);
+        completed.push(ev.tile);
+      }
+    }
+  } else {
+    completed = Object.entries(data.completedByTile || {})
+      .filter(([, ids]) => ids.map(Number).includes(Number(teamId)))
+      .map(([tileStr]) => Number(tileStr))
+      .sort((a, b) => b - a)
+      .slice(0, 5);
+  }
 
   document.getElementById('team-history-name').textContent =
     `${getTeamBullet(teamId)} ${teamName}`;

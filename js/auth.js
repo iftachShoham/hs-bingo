@@ -98,7 +98,8 @@ function showLoginError(msg) {
 
 function logout() {
   clearInterval(state.pollTimer);
-  Object.assign(state, { channelId: null, team: null, isAdmin: false, boardData: null, pollTimer: null, playerName: null, proofFile: null, prevTaskContent: null, playerPasswordHash: null });
+  clearInterval(state.activityPollTimer);
+  Object.assign(state, { channelId: null, team: null, isAdmin: false, boardData: null, pollTimer: null, playerName: null, proofFile: null, prevTaskContent: null, playerPasswordHash: null, activityLog: null, activityPollTimer: null });
   localStorage.removeItem("hs_cid");
   localStorage.removeItem("hs_pwh");
   document.getElementById("game-screen").classList.add("hidden");
@@ -153,4 +154,8 @@ function enterGame() {
       state.pollTimer = setInterval(refreshBoard, 6000);
     });
   });
+
+  // Activity log: initial fetch + 30s poll
+  refreshActivityLog();
+  state.activityPollTimer = setInterval(refreshActivityLog, 30000);
 }

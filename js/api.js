@@ -78,3 +78,13 @@ async function apiFetchBoardState() {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
+
+// Activity log — public GET, returns all COMPLETE/EARLY_COMPLETE events in order
+async function apiFetchActivityLog() {
+  const res = await fetch(
+    `${CONFIG.APPS_SCRIPT_URL}?view=activitylog&cb=${Date.now()}`,
+    { redirect: "follow" }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}

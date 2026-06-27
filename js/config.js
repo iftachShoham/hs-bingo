@@ -40,4 +40,6 @@ const state = {
   tileImages:         null,   // Map<normalizedTaskName, imagePath> — loaded once on login
   prevTaskContent:    null,   // tracks last rendered task to detect ACB trigger
   playerPasswordHash: null,   // SHA-256 hex hash of the team password (null = no password)
+  activityLog:        null,   // array of {timestamp,team_id,tile,discord_user} from activitylog endpoint
+  activityPollTimer:  null,   // setInterval ID for 30s activity log refresh
 };
