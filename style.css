@@ -1299,6 +1299,72 @@ body {
 #tile-modal-body p { margin-bottom: 6px; }
 #tile-modal-body p:last-child { margin-bottom: 0; }
 
+/* ── Chart Zoom Modal ── */
+#chart-modal {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  backdrop-filter: blur(1px);
+}
+#chart-modal.hidden { display: none; }
+
+#chart-modal-card {
+  position: relative;
+  border-radius: 2px;
+  padding: 28px 20px 20px;
+  max-width: 720px;
+  width: 100%;
+  background-color: #1e1508;
+  background-image:
+    repeating-linear-gradient(
+      1deg,
+      transparent 0px, transparent 2px,
+      rgba(0,0,0,0.055) 2px, rgba(0,0,0,0.055) 3px,
+      transparent 3px, transparent 8px
+    ),
+    linear-gradient(160deg, #2a1e0a 0%, #1e1408 60%, #160e06 100%);
+  box-shadow:
+    var(--frame),
+    var(--bevel-up),
+    0 24px 80px rgba(0,0,0,0.95);
+}
+
+#chart-modal-card::before {
+  content: '◆';
+  position: absolute;
+  font-size: 11px;
+  color: var(--accent);
+  opacity: 0.65;
+  top: 10px;
+  left: 12px;
+}
+
+#chart-modal-title {
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  margin-bottom: 14px;
+  text-align: center;
+  text-shadow:
+    0 0 14px rgba(200,164,40,0.5),
+    0 2px 5px rgba(0,0,0,0.9);
+}
+
+#chart-modal-canvas {
+  display: block;
+  width: 100%;
+  border-radius: 1px;
+  border: 1px solid var(--border-lo);
+}
+
 /* ── Stats section ── */
 #stats-section { display: flex; flex-direction: column; gap: 12px; }
 
@@ -1322,6 +1388,15 @@ body {
   width: 100%;
   border-radius: 1px;
   border: 1px solid var(--border-lo);
+}
+
+.chart-zoomable {
+  cursor: zoom-in;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.chart-zoomable:hover {
+  border-color: var(--border-hi);
+  box-shadow: 0 0 10px rgba(200,164,40,0.18);
 }
 
 /* Chart legend (shared, below charts) */
