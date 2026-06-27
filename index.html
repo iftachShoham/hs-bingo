@@ -153,6 +153,23 @@
           <div id="teams-list"></div>
         </section>
 
+        <section class="panel-section" id="stats-section">
+          <h3>📊 Statistics</h3>
+          <div class="stat-block">
+            <div class="stat-block-label">Completions per Day</div>
+            <canvas id="chart-per-day"></canvas>
+          </div>
+          <div class="stat-block">
+            <div class="stat-block-label">Cumulative Completions</div>
+            <canvas id="chart-running"></canvas>
+          </div>
+          <div class="stat-block">
+            <div class="stat-block-label">🏅 Top Players</div>
+            <div id="player-leaderboard"></div>
+          </div>
+          <div id="chart-legend" class="chart-legend"></div>
+        </section>
+
         <section class="panel-section hidden" id="admin-section">
           <h3>🛡️ Game Master</h3>
           <div id="admin-controls">
@@ -207,6 +224,9 @@
       <button class="tab-btn" data-tab="teams" onclick="switchTab('teams')">
         <span class="tab-icon">🏆</span><span class="tab-label">Teams</span>
       </button>
+      <button class="tab-btn" data-tab="stats" onclick="switchTab('stats')">
+        <span class="tab-icon">📊</span><span class="tab-label">Stats</span>
+      </button>
       <button class="tab-btn" data-tab="log" onclick="switchTab('log')">
         <span class="tab-icon">📋</span><span class="tab-label">Log</span>
       </button>
@@ -259,6 +279,7 @@
   <script src="js/snakes.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/board.js"></script>
+  <script src="js/stats.js"></script>
   <script src="js/actions.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/auth.js"></script>

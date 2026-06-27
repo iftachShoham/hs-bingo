@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Enter") login();
   });
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape") closeTileModal();
+    if (e.key === "Escape") { closeTileModal(); closeTeamHistoryModal(); }
   });
 
   // Pre-fill saved player name
