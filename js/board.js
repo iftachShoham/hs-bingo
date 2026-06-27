@@ -237,6 +237,18 @@ function renderBoard(data) {
   requestAnimationFrame(() => drawSnakes(snakes));
 }
 
+function getHotStreakTeamId() {
+  const log = state.activityLog;
+  if (!log || log.length < 2) return null;
+  const lastId = Number(log[log.length - 1].team_id);
+  let streak = 0;
+  for (let i = log.length - 1; i >= 0; i--) {
+    if (Number(log[i].team_id) === lastId) streak++;
+    else break;
+  }
+  return streak >= 2 ? lastId : null;
+}
+
 function renderTeamsList(teams) {
   const el        = document.getElementById("teams-list");
   el.innerHTML    = "";
@@ -244,6 +256,7 @@ function renderTeamsList(teams) {
   const tileMap   = state.boardData?.tileContentMap || {};
   const amountMap = state.boardData?.tileAmountMap || {};
   const countsMap = state.boardData?.completionCountsByTile || {};
+  const hotId     = getHotStreakTeamId();
 
   teams.forEach(t => {
     const tid      = Number(t.team_id);
@@ -276,6 +289,12 @@ function renderTeamsList(teams) {
     const nameEl = document.createElement("span");
     nameEl.className = "team-name";
     nameEl.textContent = t.team_name;
+    if (tid === hotId) {
+      const fire = document.createElement("span");
+      fire.className = "team-fire";
+      fire.textContent = "🔥";
+      nameEl.appendChild(fire);
+    }
 
     const tileEl = document.createElement("span");
     tileEl.className = "team-tile";
