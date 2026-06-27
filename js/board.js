@@ -33,6 +33,7 @@ async function refreshBoard() {
 
     renderBoard(data);
     renderTeamsList(data.teams);
+    renderCompletionsBar(data);
     renderTaskBox(data);
     updateHeaderTile();
     if (state.isAdmin) populateAdminDropdown(data.teams);
@@ -293,8 +294,102 @@ function renderTeamsList(teams) {
 
     row.appendChild(bullet);
     row.appendChild(info);
+    row.addEventListener('click', () => showTeamHistory(tid, t.team_name));
     el.appendChild(row);
   });
+}
+
+function buildMiniTile(tileNum, content, teamIds = []) {
+  const wrap = document.createElement('div');
+  wrap.className = 'mini-tile';
+  wrap.title = content ? `Tile ${tileNum}: ${content}` : `Tile ${tileNum}`;
+
+  if (state.tileImages && content) {
+    const imgPath = state.tileImages.get(content.toLowerCase().trim());
+    if (imgPath) {
+      const bgEl = document.createElement('div');
+      bgEl.className = 'mini-tile-img';
+      bgEl.style.backgroundImage = `url('${imgPath.replace(/'/g, "%27")}')`;
+      wrap.appendChild(bgEl);
+    }
+  }
+
+  const numEl = document.createElement('div');
+  numEl.className = 'mini-tile-num';
+  numEl.textContent = tileNum;
+  wrap.appendChild(numEl);
+
+  if (teamIds.length > 0) {
+    const dotsEl = document.createElement('div');
+    dotsEl.className = 'mini-tile-dots';
+    teamIds.forEach(id => {
+      const dot = document.createElement('span');
+      dot.className = 'mini-tile-dot';
+      dot.style.background = TEAM_COLORS[Number(id)] || '#fff';
+      dotsEl.appendChild(dot);
+    });
+    wrap.appendChild(dotsEl);
+  }
+
+  return wrap;
+}
+
+function renderCompletionsBar(data) {
+  const el = document.getElementById('completions-bar-tiles');
+  if (!el) return;
+  const { completedByTile, tileContentMap } = data;
+
+  const entries = Object.entries(completedByTile || {})
+    .filter(([, ids]) => ids.length > 0)
+    .map(([tileStr, ids]) => ({ tile: Number(tileStr), ids: ids.map(Number) }))
+    .sort((a, b) => b.tile - a.tile)
+    .slice(0, 10);
+
+  el.innerHTML = '';
+  if (entries.length === 0) {
+    const empty = document.createElement('span');
+    empty.style.cssText = 'color:var(--text-muted);font-size:11px;';
+    empty.textContent = 'No completions yet';
+    el.appendChild(empty);
+    return;
+  }
+
+  entries.forEach(({ tile, ids }) => {
+    const content = (tileContentMap || {})[tile] || '';
+    el.appendChild(buildMiniTile(tile, content, ids));
+  });
+}
+
+function showTeamHistory(teamId, teamName) {
+  const data = state.boardData;
+  if (!data) return;
+  const { completedByTile, tileContentMap } = data;
+
+  const completed = Object.entries(completedByTile || {})
+    .filter(([, ids]) => ids.map(Number).includes(Number(teamId)))
+    .map(([tileStr]) => Number(tileStr))
+    .sort((a, b) => b - a)
+    .slice(0, 5);
+
+  document.getElementById('team-history-name').textContent =
+    `${getTeamBullet(teamId)} ${teamName}`;
+
+  const tilesEl = document.getElementById('team-history-tiles');
+  tilesEl.innerHTML = '';
+
+  if (completed.length === 0) {
+    const empty = document.createElement('span');
+    empty.style.cssText = 'color:var(--text-muted);font-size:12px;';
+    empty.textContent = 'No completions yet';
+    tilesEl.appendChild(empty);
+  } else {
+    completed.forEach(tileNum => {
+      const content = (tileContentMap || {})[tileNum] || '';
+      tilesEl.appendChild(buildMiniTile(tileNum, content, [teamId]));
+    });
+  }
+
+  document.getElementById('team-history-modal').classList.remove('hidden');
 }
 
 function renderTaskBox(data) {
