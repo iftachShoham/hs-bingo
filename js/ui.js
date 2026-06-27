@@ -178,3 +178,7 @@ function showTileInfo(tileNum, content, snakes, teamsHere, triggeredRatSet, comp
 function closeTileModal() {
   document.getElementById('tile-modal').classList.add('hidden');
 }
+
+function closeTeamHistoryModal() {
+  document.getElementById('team-history-modal').classList.add('hidden');
+}

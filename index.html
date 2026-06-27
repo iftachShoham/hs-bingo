@@ -146,6 +146,10 @@
 
         <section class="panel-section" id="teams-section">
           <h3>🏆 All Teams</h3>
+          <div id="completions-bar">
+            <div class="completions-bar-header">⚡ Recent Completions</div>
+            <div id="completions-bar-tiles"></div>
+          </div>
           <div id="teams-list"></div>
         </section>
 
@@ -208,6 +212,16 @@
       </button>
     </nav>
 
+  </div>
+
+  <!-- ── Team History Modal ── -->
+  <div id="team-history-modal" class="hidden" onclick="closeTeamHistoryModal()">
+    <div id="team-history-card" onclick="event.stopPropagation()">
+      <button class="tile-modal-close" onclick="closeTeamHistoryModal()">✕</button>
+      <div id="team-history-name"></div>
+      <div class="team-history-subtitle">Recent completions</div>
+      <div id="team-history-tiles"></div>
+    </div>
   </div>
 
   <!-- ── Tile Info Modal (mobile tap) ── -->
