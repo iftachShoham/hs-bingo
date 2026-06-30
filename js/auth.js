@@ -151,7 +151,7 @@ function enterGame() {
   // Load tile images once, then kick off polling
   loadTileImages().then(() => {
     refreshBoard().then(() => {
-      state.pollTimer = setInterval(refreshBoard, 6000);
+      state.pollTimer = setInterval(refreshBoard, 10000);
     });
   });
 
