@@ -44,6 +44,22 @@ document.addEventListener("DOMContentLoaded", () => {
     if (state.boardData?.snakes) requestAnimationFrame(() => drawSnakes(state.boardData.snakes));
   });
 
+  // Pause polling when tab is hidden; resume immediately when user comes back
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      clearInterval(state.pollTimer);
+      clearInterval(state.activityPollTimer);
+      state.pollTimer = null;
+      state.activityPollTimer = null;
+    } else if (state.channelId) {
+      // Tab is visible again and user is logged in — fetch right away, then restart intervals
+      refreshBoard();
+      refreshActivityLog();
+      state.pollTimer = setInterval(refreshBoard, 10000);
+      state.activityPollTimer = setInterval(refreshActivityLog, 30000);
+    }
+  });
+
   // Auto-login from localStorage
   const saved    = localStorage.getItem("hs_cid");
   const savedPwh = localStorage.getItem("hs_pwh");
