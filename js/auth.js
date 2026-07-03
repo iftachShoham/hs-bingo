@@ -111,9 +111,8 @@ function logout() {
   const rc = document.getElementById("reroll-check");
   if (rc) { rc.checked = false; rc.disabled = false; }
   const pc = document.getElementById("pet-reroll-check");
-  if (pc) pc.checked = false;
+  if (pc) { pc.checked = false; pc.disabled = false; }
   document.getElementById("reroll-modal")?.classList.add("hidden");
-  document.getElementById("reroll-toggle-row")?.classList.add("hidden");
   clearProof();
 }
 

@@ -344,24 +344,24 @@ function updateRerollUI() {
   );
   const available = myTeam?.rerolls_available || 0;
 
-  // Always show the row — teams must always see their count
-  const rerollRow = document.getElementById("reroll-toggle-row");
-  if (rerollRow) rerollRow.classList.remove("hidden");
-
+  // Update badge count
   const badge = document.getElementById("reroll-count-badge");
   if (badge) badge.textContent = `${available} reroll${available !== 1 ? "s" : ""} left`;
 
-  // Disable checkbox at 0 (not hide); uncheck if now 0
+  // Disable checkbox at 0 (row is always visible — no hidden toggling needed)
   const rc = document.getElementById("reroll-check");
   if (rc) {
     rc.disabled = available < 1;
     if (available < 1) rc.checked = false;
   }
 
-  // Show pet mechanic row whenever team is on a valid tile
+  // Pet row is always visible; disable its checkbox when team hasn't rolled yet
   const myTile = Number(state.team.current_tile);
-  const petRow = document.getElementById("pet-reroll-row");
-  if (petRow) petRow.classList.toggle("hidden", myTile < 1);
+  const pc = document.getElementById("pet-reroll-check");
+  if (pc) {
+    pc.disabled = myTile < 1;
+    if (myTile < 1) pc.checked = false;
+  }
 }
 
 function buildMiniTile(tileNum, content, teamIds = []) {
