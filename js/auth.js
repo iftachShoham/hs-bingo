@@ -107,6 +107,13 @@ function logout() {
   document.getElementById("team-code-input").value = "";
   document.getElementById("roll-result").classList.add("hidden");
   document.getElementById("complete-result").classList.add("hidden");
+  // Reset reroll UI
+  const rc = document.getElementById("reroll-check");
+  if (rc) { rc.checked = false; rc.disabled = false; }
+  const pc = document.getElementById("pet-reroll-check");
+  if (pc) pc.checked = false;
+  document.getElementById("reroll-modal")?.classList.add("hidden");
+  document.getElementById("reroll-toggle-row")?.classList.add("hidden");
   clearProof();
 }
 

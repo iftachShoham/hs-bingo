@@ -3,6 +3,13 @@
 // ══════════════════════════════════════════════════════
 
 async function doRoll() {
+  // If reroll checkbox is ticked, show confirmation modal instead of rolling
+  const rerollCheck = document.getElementById("reroll-check");
+  if (rerollCheck && rerollCheck.checked) {
+    showRerollConfirmModal();
+    return;
+  }
+
   const btn = document.getElementById("btn-roll");
   setBusy(btn, true, "🎲 Rolling…");
   setRollResult("🎲 Rolling…");
@@ -219,6 +226,14 @@ function dismissRatWheel() {
 }
 
 async function doComplete() {
+  // Pet mechanic: if "use as reroll" is ticked, gain a reroll instead of completing
+  const petCheck = document.getElementById("pet-reroll-check");
+  if (petCheck && petCheck.checked) {
+    petCheck.checked = false;
+    await doRerollGain();
+    return;  // tile completion does NOT happen
+  }
+
   const proofUrl = document.getElementById("proof-url").value.trim();
   const hasFile  = !!state.proofFile;
 
@@ -335,4 +350,128 @@ function clearProof() {
   document.getElementById("proof-img").src = "";
   const fi = document.getElementById("proof-file");
   if (fi) fi.value = "";
+}
+
+// ── Reroll: pet mechanic — gain a reroll instead of completing the tile ──
+
+async function doRerollGain() {
+  const btn = document.getElementById("btn-complete");
+  setBusy(btn, true, "🔄 Gaining reroll…");
+  setCompleteResult("🔄 Converting tile to reroll…");
+  try {
+    const result = await apiCommand("reroll_gain", { username: state.playerName || "" });
+    setCompleteResult(result.message || JSON.stringify(result));
+    addFeedEvent(result.success ? "ok" : "err", result.message || "Reroll gained.");
+    if (result.success) {
+      if (!state.isAdmin && state.team) {
+        const teamData = state.boardData?.teams?.find(
+          t => Number(t.team_id) === Number(state.team.team_id)
+        );
+        const webhookUrl = teamData?.webhook_url;
+        if (webhookUrl) {
+          const credit = state.playerName ? ` *(${state.playerName} via web)*` : " *(via web)*";
+          fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: (result.message || "") + credit })
+          }).catch(() => {});
+        }
+      }
+      await refreshBoard();
+    }
+  } catch (err) {
+    setCompleteResult("❌ " + err.message);
+    addFeedEvent("err", err.message);
+  } finally {
+    setBusy(btn, false, "✅ Complete Task");
+  }
+}
+
+// ── Reroll: spend a reroll — show modal, then execute ──
+
+function showRerollConfirmModal() {
+  const myTeam = state.boardData?.teams?.find(
+    t => Number(t.team_id) === Number(state.team?.team_id)
+  );
+  const rerollsUsed  = myTeam?.rerolls_used  || 0;
+  const rerollsAvail = myTeam?.rerolls_available || 0;
+
+  // Guard against stale UI state
+  if (rerollsAvail < 1) {
+    const rc = document.getElementById("reroll-check");
+    if (rc) { rc.checked = false; rc.disabled = true; }
+    setRollResult("❌ No rerolls available.");
+    updateRerollUI();
+    return;
+  }
+
+  let explanation;
+  if (rerollsUsed === 0) {
+    explanation = "This is your 1st reroll used. You will move <strong>backwards 1–3 tiles</strong> (random).";
+  } else if (rerollsUsed === 1) {
+    explanation = "This is your 2nd reroll used. You will roll a <strong>d6 backwards</strong> (1–6 tiles).";
+  } else {
+    explanation = `This is your ${rerollsUsed + 1}th reroll used. You will roll <strong>two d6 and move back by the higher result</strong> (worst of two dice).`;
+  }
+
+  document.getElementById("reroll-modal-body").innerHTML =
+    `<p><strong>Rerolls available:</strong> ${rerollsAvail}</p>` +
+    `<p><strong>Rerolls used so far:</strong> ${rerollsUsed}</p>` +
+    `<p class="reroll-modal-rule">${explanation}</p>` +
+    `<p class="reroll-modal-warning">⚠️ You will move backwards. This cannot be undone.</p>`;
+
+  document.getElementById("reroll-modal").classList.remove("hidden");
+}
+
+function cancelReroll() {
+  document.getElementById("reroll-modal").classList.add("hidden");
+}
+
+async function confirmReroll() {
+  document.getElementById("reroll-modal").classList.add("hidden");
+  const btn = document.getElementById("btn-roll");
+  setBusy(btn, true, "🔄 Rerolling…");
+  setRollResult("🔄 Using reroll…");
+  try {
+    const result = await apiCommand("roll", { use_reroll: true });
+    setRollResult(result.message || JSON.stringify(result));
+    addFeedEvent(result.success ? "ok" : "err", result.message || "Reroll done.");
+    if (result.success) {
+      const rc = document.getElementById("reroll-check");
+      if (rc) rc.checked = false;
+
+      if (!state.isAdmin && state.team) {
+        const teamData = state.boardData?.teams?.find(
+          t => Number(t.team_id) === Number(state.team.team_id)
+        );
+        const webhookUrl = teamData?.webhook_url;
+        if (webhookUrl) {
+          const credit = state.playerName ? ` *(${state.playerName} via web)*` : " *(via web)*";
+          fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: (result.message || "") + credit })
+          }).catch(() => {});
+        }
+      }
+
+      await refreshBoard();
+    }
+  } catch (err) {
+    setRollResult("❌ " + err.message);
+    addFeedEvent("err", err.message);
+  } finally {
+    setBusy(btn, false, "🎲 Roll Dice");
+  }
+}
+
+function onRerollCheckChange() {
+  const myTeam = state.boardData?.teams?.find(
+    t => Number(t.team_id) === Number(state.team?.team_id)
+  );
+  const available = myTeam?.rerolls_available || 0;
+  const rc = document.getElementById("reroll-check");
+  if (rc?.checked && available < 1) {
+    rc.checked = false;
+  }
 }

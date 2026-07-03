@@ -108,6 +108,13 @@
 
         <section class="panel-section" id="roll-section">
           <h3>🎲 Roll Dice</h3>
+          <div id="reroll-toggle-row" class="reroll-toggle-row hidden">
+            <label class="reroll-toggle-label">
+              <input type="checkbox" id="reroll-check" onchange="onRerollCheckChange()" />
+              🔄 Reroll
+              <span id="reroll-count-badge" class="reroll-badge">0 rerolls left</span>
+            </label>
+          </div>
           <button class="btn-action btn-roll" id="btn-roll" onclick="doRoll()">🎲 Roll Dice</button>
           <div id="roll-result" class="action-result hidden"></div>
         </section>
@@ -138,6 +145,12 @@
             <label class="early-completion-label">
               <input type="checkbox" id="early-completion-check" />
               🏆 Early completion — counts as all remaining submissions
+            </label>
+          </div>
+          <div id="pet-reroll-row" class="hidden">
+            <label class="pet-reroll-label">
+              <input type="checkbox" id="pet-reroll-check" />
+              🐾 Use as reroll instead — tile will <strong>NOT</strong> be marked complete, you gain 1 reroll
             </label>
           </div>
           <button class="btn-action btn-complete" id="btn-complete" onclick="doComplete()">✅ Complete Task</button>
@@ -262,6 +275,19 @@
       <div id="tile-modal-task"></div>
       <div id="tile-modal-img" class="hidden"></div>
       <div id="tile-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ── Reroll Confirmation Modal ── -->
+  <div id="reroll-modal" class="hidden" onclick="cancelReroll()">
+    <div id="reroll-modal-card" onclick="event.stopPropagation()">
+      <button class="tile-modal-close" onclick="cancelReroll()">✕</button>
+      <div id="reroll-modal-title">🔄 Confirm Reroll</div>
+      <div id="reroll-modal-body"></div>
+      <div class="reroll-modal-actions">
+        <button class="btn-action btn-reroll-confirm" onclick="confirmReroll()">🔄 Use Reroll</button>
+        <button class="btn-action btn-reroll-cancel" onclick="cancelReroll()">Cancel</button>
+      </div>
     </div>
   </div>
 

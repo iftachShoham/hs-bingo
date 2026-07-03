@@ -311,11 +311,57 @@ function renderTeamsList(teams) {
       info.appendChild(taskEl);
     }
 
+    // Reroll counts — always show if either value is non-zero, or if it's the logged-in team
+    const rerollAvail = Number(t.rerolls_available || 0);
+    const rerollUsed  = Number(t.rerolls_used  || 0);
+    if (rerollAvail > 0 || rerollUsed > 0 || tid === myId) {
+      const rerollRow = document.createElement("div");
+      rerollRow.className = "team-rerolls";
+      const availEl = document.createElement("span");
+      availEl.className = "team-rerolls-available";
+      availEl.textContent = `🎲 ${rerollAvail} reroll${rerollAvail !== 1 ? "s" : ""}`;
+      availEl.title = `Rerolls available: ${rerollAvail}`;
+      const usedEl = document.createElement("span");
+      usedEl.className = "team-rerolls-used";
+      usedEl.textContent = `· used: ${rerollUsed}`;
+      usedEl.title = `Rerolls used: ${rerollUsed}`;
+      rerollRow.appendChild(availEl);
+      rerollRow.appendChild(usedEl);
+      info.appendChild(rerollRow);
+    }
+
     row.appendChild(bullet);
     row.appendChild(info);
     row.addEventListener('click', () => showTeamHistory(tid, t.team_name));
     el.appendChild(row);
   });
+}
+
+function updateRerollUI() {
+  if (!state.team || state.isAdmin) return;
+  const myTeam = state.boardData?.teams?.find(
+    t => Number(t.team_id) === Number(state.team.team_id)
+  );
+  const available = myTeam?.rerolls_available || 0;
+
+  // Always show the row — teams must always see their count
+  const rerollRow = document.getElementById("reroll-toggle-row");
+  if (rerollRow) rerollRow.classList.remove("hidden");
+
+  const badge = document.getElementById("reroll-count-badge");
+  if (badge) badge.textContent = `${available} reroll${available !== 1 ? "s" : ""} left`;
+
+  // Disable checkbox at 0 (not hide); uncheck if now 0
+  const rc = document.getElementById("reroll-check");
+  if (rc) {
+    rc.disabled = available < 1;
+    if (available < 1) rc.checked = false;
+  }
+
+  // Show pet mechanic row whenever team is on a valid tile
+  const myTile = Number(state.team.current_tile);
+  const petRow = document.getElementById("pet-reroll-row");
+  if (petRow) petRow.classList.toggle("hidden", myTile < 1);
 }
 
 function buildMiniTile(tileNum, content, teamIds = []) {
@@ -503,6 +549,8 @@ function renderTaskBox(data) {
       if (cb) cb.checked = false;
     }
   }
+
+  updateRerollUI();
 }
 
 function updateHeaderTile() {
