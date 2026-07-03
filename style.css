@@ -1813,3 +1813,160 @@ body {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.55; }
 }
+
+/* ══════════════════════════════════════════════
+   REROLL FEATURE
+   ══════════════════════════════════════════════ */
+
+/* Reroll toggle row — always visible in the Roll section */
+.reroll-toggle-row {
+  margin: 0 0 8px;
+  padding: 7px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  box-shadow: var(--bevel-up);
+}
+.reroll-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  user-select: none;
+}
+.reroll-toggle-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.reroll-toggle-label input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.reroll-badge {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 1px 7px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+/* Pet reroll row — in Complete section */
+#pet-reroll-row { margin: 6px 0 8px; }
+.pet-reroll-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 7px 10px;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 2px;
+  line-height: 1.5;
+  user-select: none;
+}
+.pet-reroll-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.pet-reroll-label strong { color: var(--accent-hi); }
+
+/* Reroll confirmation modal */
+#reroll-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 650;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.78);
+  backdrop-filter: blur(2px);
+}
+#reroll-modal.hidden { display: none !important; }
+#reroll-modal-card {
+  position: relative;
+  width: min(380px, 92vw);
+  padding: 28px 28px 24px;
+  background: var(--surface2);
+  border-radius: 2px;
+  box-shadow: var(--frame), var(--bevel-up), 0 20px 60px rgba(0,0,0,0.85);
+}
+#reroll-modal-title {
+  font-family: 'Cinzel', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 14px;
+  letter-spacing: 1px;
+}
+#reroll-modal-body p {
+  font-size: 13px;
+  margin-bottom: 9px;
+  color: var(--text);
+  line-height: 1.5;
+}
+.reroll-modal-rule {
+  background: var(--surface3);
+  border-left: 3px solid var(--accent);
+  padding: 8px 10px;
+  border-radius: 0 2px 2px 0;
+  color: var(--accent-hi) !important;
+  font-weight: 600;
+}
+.reroll-modal-warning {
+  color: var(--orange) !important;
+  font-size: 12px !important;
+}
+.reroll-modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.btn-reroll-confirm {
+  flex: 1;
+  background: linear-gradient(180deg, #2a4a1a, #1a3010);
+  border-color: var(--green);
+  color: var(--green-hi);
+}
+.btn-reroll-confirm:hover { background: linear-gradient(180deg, #3a5a2a, #2a4020); }
+.btn-reroll-cancel {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
+/* Reroll columns in teams list */
+.team-rerolls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+}
+.team-rerolls-available {
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+.team-rerolls-used {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
