@@ -154,18 +154,28 @@
 
           <div id="early-completion-row" class="hidden">
             <label class="early-completion-label">
-              <input type="checkbox" id="early-completion-check" />
+              <input type="checkbox" id="early-completion-check" onchange="onEarlyCompletionChange()" />
               🏆 Early completion — counts as all remaining submissions
             </label>
           </div>
-          <div id="pet-reroll-row" class="pet-reroll-row">
+          <div id="pet-reroll-row" class="pet-reroll-row" style="position:relative;">
             <label class="pet-reroll-label">
-              <input type="checkbox" id="pet-reroll-check" />
+              <input type="checkbox" id="pet-reroll-check" onchange="onPetRerollChange()" />
               <span class="pet-reroll-text">
-                <span class="pet-reroll-heading">🐾 Trade tile for a Rollback</span>
+                <span class="pet-reroll-heading">
+                  🐾 Trade pet for Rollback
+                  <button type="button" class="reroll-help-btn" onclick="togglePetRerollHelp(event)" title="How does pet trading work?">?</button>
+                </span>
                 <span class="pet-reroll-sub">Tile will <strong>NOT</strong> be marked complete — you gain 1 rollback instead</span>
               </span>
             </label>
+            <div id="pet-reroll-help-popup" class="reroll-help-popup hidden">
+              <div class="reroll-help-title">🐾 Pet Trade Rules</div>
+              <ul class="reroll-help-list">
+                <li>Only pets received while <strong>pursuing the current tile</strong> count toward this trade</li>
+                <li>If a pet is required for task completion, the team must choose: use it to <strong>complete the tile</strong> <em>or</em> as a <strong>rollback credit</strong> — not both</li>
+              </ul>
+            </div>
           </div>
           <button class="btn-action btn-complete" id="btn-complete" onclick="doComplete()">✅ Complete Task</button>
           <div id="complete-result" class="action-result hidden"></div>

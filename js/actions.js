@@ -465,6 +465,22 @@ async function confirmReroll() {
   }
 }
 
+function onEarlyCompletionChange() {
+  const ec = document.getElementById("early-completion-check");
+  if (ec?.checked) {
+    const pr = document.getElementById("pet-reroll-check");
+    if (pr) pr.checked = false;
+  }
+}
+
+function onPetRerollChange() {
+  const pr = document.getElementById("pet-reroll-check");
+  if (pr?.checked) {
+    const ec = document.getElementById("early-completion-check");
+    if (ec) ec.checked = false;
+  }
+}
+
 function onRerollCheckChange() {
   const myTeam = state.boardData?.teams?.find(
     t => Number(t.team_id) === Number(state.team?.team_id)
@@ -483,10 +499,23 @@ function toggleRerollHelp(e) {
   if (popup) popup.classList.toggle("hidden");
 }
 
-// Close help popup when clicking outside of it
+function togglePetRerollHelp(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const popup = document.getElementById("pet-reroll-help-popup");
+  if (popup) popup.classList.toggle("hidden");
+}
+
+// Close help popups when clicking outside
 document.addEventListener("click", (e) => {
-  const popup = document.getElementById("reroll-help-popup");
-  if (!popup || popup.classList.contains("hidden")) return;
-  const row = document.getElementById("reroll-toggle-row");
-  if (row && !row.contains(e.target)) popup.classList.add("hidden");
+  const pairs = [
+    ["reroll-help-popup", "reroll-toggle-row"],
+    ["pet-reroll-help-popup", "pet-reroll-row"],
+  ];
+  for (const [popupId, rowId] of pairs) {
+    const popup = document.getElementById(popupId);
+    if (!popup || popup.classList.contains("hidden")) continue;
+    const row = document.getElementById(rowId);
+    if (row && !row.contains(e.target)) popup.classList.add("hidden");
+  }
 });

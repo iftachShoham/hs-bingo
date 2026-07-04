@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Enter") login();
   });
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape") { closeTileModal(); closeTeamHistoryModal(); cancelReroll(); document.getElementById("reroll-help-popup")?.classList.add("hidden"); }
+    if (e.key === "Escape") { closeTileModal(); closeTeamHistoryModal(); cancelReroll(); document.getElementById("reroll-help-popup")?.classList.add("hidden"); document.getElementById("pet-reroll-help-popup")?.classList.add("hidden"); }
   });
 
   // Pre-fill saved player name
