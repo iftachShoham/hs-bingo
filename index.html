@@ -111,9 +111,20 @@
           <div id="reroll-toggle-row" class="reroll-toggle-row">
             <label class="reroll-toggle-label">
               <input type="checkbox" id="reroll-check" onchange="onRerollCheckChange()" />
-              🔄 Reroll
-              <span id="reroll-count-badge" class="reroll-badge">0 rerolls left</span>
+              ⏪ Rollback
+              <button type="button" class="reroll-help-btn" onclick="toggleRerollHelp(event)" title="How does Rollback work?">?</button>
+              <span id="reroll-count-badge" class="reroll-badge">0 rollbacks left</span>
             </label>
+            <div id="reroll-help-popup" class="reroll-help-popup hidden">
+              <div class="reroll-help-title">⏪ How Rollback Works</div>
+              <ul class="reroll-help-list">
+                <li><strong>1st use:</strong> Move backwards <strong>1–3 tiles</strong> (random)</li>
+                <li><strong>2nd use:</strong> Roll a d6 backwards (<strong>1–6 tiles</strong>)</li>
+                <li><strong>3rd+ use:</strong> Roll two d6, move back by the <strong>higher result</strong></li>
+              </ul>
+              <div class="reroll-help-warning">⚠️ Ticking this box and rolling will cost 1 rollback and move your team backwards. This cannot be undone.</div>
+              <div class="reroll-help-earn">Rollbacks are earned by completing tiles ≥40, or by using the pet mechanic in the Complete section.</div>
+            </div>
           </div>
           <button class="btn-action btn-roll" id="btn-roll" onclick="doRoll()">🎲 Roll Dice</button>
           <div id="roll-result" class="action-result hidden"></div>
@@ -147,10 +158,13 @@
               🏆 Early completion — counts as all remaining submissions
             </label>
           </div>
-          <div id="pet-reroll-row">
+          <div id="pet-reroll-row" class="pet-reroll-row">
             <label class="pet-reroll-label">
               <input type="checkbox" id="pet-reroll-check" />
-              🐾 Use as reroll instead — tile will <strong>NOT</strong> be marked complete, you gain 1 reroll
+              <span class="pet-reroll-text">
+                <span class="pet-reroll-heading">🐾 Trade tile for a Rollback</span>
+                <span class="pet-reroll-sub">Tile will <strong>NOT</strong> be marked complete — you gain 1 rollback instead</span>
+              </span>
             </label>
           </div>
           <button class="btn-action btn-complete" id="btn-complete" onclick="doComplete()">✅ Complete Task</button>
@@ -282,10 +296,10 @@
   <div id="reroll-modal" class="hidden" onclick="cancelReroll()">
     <div id="reroll-modal-card" onclick="event.stopPropagation()">
       <button class="tile-modal-close" onclick="cancelReroll()">✕</button>
-      <div id="reroll-modal-title">🔄 Confirm Reroll</div>
+      <div id="reroll-modal-title">⏪ Confirm Rollback</div>
       <div id="reroll-modal-body"></div>
       <div class="reroll-modal-actions">
-        <button class="btn-action btn-reroll-confirm" onclick="confirmReroll()">🔄 Use Reroll</button>
+        <button class="btn-action btn-reroll-confirm" onclick="confirmReroll()">⏪ Use Rollback</button>
         <button class="btn-action btn-reroll-cancel" onclick="cancelReroll()">Cancel</button>
       </div>
     </div>

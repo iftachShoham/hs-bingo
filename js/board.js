@@ -319,12 +319,12 @@ function renderTeamsList(teams) {
       rerollRow.className = "team-rerolls";
       const availEl = document.createElement("span");
       availEl.className = "team-rerolls-available";
-      availEl.textContent = `🎲 ${rerollAvail} reroll${rerollAvail !== 1 ? "s" : ""}`;
-      availEl.title = `Rerolls available: ${rerollAvail}`;
+      availEl.textContent = `⏪ ${rerollAvail} rollback${rerollAvail !== 1 ? "s" : ""}`;
+      availEl.title = `Rollbacks available: ${rerollAvail}`;
       const usedEl = document.createElement("span");
       usedEl.className = "team-rerolls-used";
       usedEl.textContent = `· used: ${rerollUsed}`;
-      usedEl.title = `Rerolls used: ${rerollUsed}`;
+      usedEl.title = `Rollbacks used: ${rerollUsed}`;
       rerollRow.appendChild(availEl);
       rerollRow.appendChild(usedEl);
       info.appendChild(rerollRow);
@@ -346,7 +346,7 @@ function updateRerollUI() {
 
   // Update badge count
   const badge = document.getElementById("reroll-count-badge");
-  if (badge) badge.textContent = `${available} reroll${available !== 1 ? "s" : ""} left`;
+  if (badge) badge.textContent = `${available} rollback${available !== 1 ? "s" : ""} left`;
 
   // Disable checkbox at 0 (row is always visible — no hidden toggling needed)
   const rc = document.getElementById("reroll-check");
