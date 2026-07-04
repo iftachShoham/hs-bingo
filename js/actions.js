@@ -356,12 +356,12 @@ function clearProof() {
 
 async function doRerollGain() {
   const btn = document.getElementById("btn-complete");
-  setBusy(btn, true, "🔄 Gaining reroll…");
-  setCompleteResult("🔄 Converting tile to reroll…");
+  setBusy(btn, true, "⏪ Gaining rollback…");
+  setCompleteResult("⏪ Converting tile to rollback…");
   try {
     const result = await apiCommand("reroll_gain", { username: state.playerName || "" });
     setCompleteResult(result.message || JSON.stringify(result));
-    addFeedEvent(result.success ? "ok" : "err", result.message || "Reroll gained.");
+    addFeedEvent(result.success ? "ok" : "err", result.message || "Rollback gained.");
     if (result.success) {
       if (!state.isAdmin && state.team) {
         const teamData = state.boardData?.teams?.find(
@@ -400,25 +400,25 @@ function showRerollConfirmModal() {
   if (rerollsAvail < 1) {
     const rc = document.getElementById("reroll-check");
     if (rc) { rc.checked = false; rc.disabled = true; }
-    setRollResult("❌ No rerolls available.");
+    setRollResult("❌ No rollbacks available.");
     updateRerollUI();
     return;
   }
 
   let explanation;
   if (rerollsUsed === 0) {
-    explanation = "This is your 1st reroll used. You will move <strong>backwards 1–3 tiles</strong> (random).";
+    explanation = "1st rollback: you will move <strong>backwards 1–3 tiles</strong> (random).";
   } else if (rerollsUsed === 1) {
-    explanation = "This is your 2nd reroll used. You will roll a <strong>d6 backwards</strong> (1–6 tiles).";
+    explanation = "2nd rollback: you will roll a <strong>d6 backwards</strong> (1–6 tiles).";
   } else {
-    explanation = `This is your ${rerollsUsed + 1}th reroll used. You will roll <strong>two d6 and move back by the higher result</strong> (worst of two dice).`;
+    explanation = `${rerollsUsed + 1}th rollback: roll two d6, move back by the <strong>higher result</strong> (worst of two dice).`;
   }
 
   document.getElementById("reroll-modal-body").innerHTML =
-    `<p><strong>Rerolls available:</strong> ${rerollsAvail}</p>` +
-    `<p><strong>Rerolls used so far:</strong> ${rerollsUsed}</p>` +
+    `<p><strong>Rollbacks available:</strong> ${rerollsAvail}</p>` +
+    `<p><strong>Rollbacks used so far:</strong> ${rerollsUsed}</p>` +
     `<p class="reroll-modal-rule">${explanation}</p>` +
-    `<p class="reroll-modal-warning">⚠️ You will move backwards. This cannot be undone.</p>`;
+    `<p class="reroll-modal-warning">⚠️ Your team will move backwards. This cannot be undone.</p>`;
 
   document.getElementById("reroll-modal").classList.remove("hidden");
 }
@@ -430,12 +430,12 @@ function cancelReroll() {
 async function confirmReroll() {
   document.getElementById("reroll-modal").classList.add("hidden");
   const btn = document.getElementById("btn-roll");
-  setBusy(btn, true, "🔄 Rerolling…");
-  setRollResult("🔄 Using reroll…");
+  setBusy(btn, true, "⏪ Rolling back…");
+  setRollResult("⏪ Using rollback…");
   try {
     const result = await apiCommand("roll", { use_reroll: true });
     setRollResult(result.message || JSON.stringify(result));
-    addFeedEvent(result.success ? "ok" : "err", result.message || "Reroll done.");
+    addFeedEvent(result.success ? "ok" : "err", result.message || "Rollback done.");
     if (result.success) {
       const rc = document.getElementById("reroll-check");
       if (rc) rc.checked = false;
@@ -475,3 +475,18 @@ function onRerollCheckChange() {
     rc.checked = false;
   }
 }
+
+function toggleRerollHelp(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const popup = document.getElementById("reroll-help-popup");
+  if (popup) popup.classList.toggle("hidden");
+}
+
+// Close help popup when clicking outside of it
+document.addEventListener("click", (e) => {
+  const popup = document.getElementById("reroll-help-popup");
+  if (!popup || popup.classList.contains("hidden")) return;
+  const row = document.getElementById("reroll-toggle-row");
+  if (row && !row.contains(e.target)) popup.classList.add("hidden");
+});

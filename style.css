@@ -1818,7 +1818,7 @@ body {
    REROLL FEATURE
    ══════════════════════════════════════════════ */
 
-/* Reroll toggle row — always visible in the Roll section */
+/* Rollback toggle row — always visible in the Roll section */
 .reroll-toggle-row {
   margin: 0 0 8px;
   padding: 7px 10px;
@@ -1826,6 +1826,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 2px;
   box-shadow: var(--bevel-up);
+  position: relative;
 }
 .reroll-toggle-label {
   display: flex;
@@ -1847,6 +1848,29 @@ body {
   cursor: not-allowed;
   opacity: 0.4;
 }
+.reroll-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.reroll-help-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
 .reroll-badge {
   margin-left: auto;
   font-size: 11px;
@@ -1858,21 +1882,61 @@ body {
   white-space: nowrap;
   font-weight: 600;
 }
+.reroll-help-popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  box-shadow: var(--frame), 0 8px 24px rgba(0,0,0,0.7);
+  padding: 12px 14px;
+}
+.reroll-help-popup.hidden { display: none; }
+.reroll-help-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.reroll-help-list {
+  margin: 0 0 8px 16px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.7;
+}
+.reroll-help-list strong { color: var(--accent-hi); }
+.reroll-help-warning {
+  font-size: 11px;
+  color: var(--orange);
+  margin-bottom: 5px;
+  line-height: 1.4;
+}
+.reroll-help-earn {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  border-top: 1px solid var(--border-lo);
+  padding-top: 6px;
+  margin-top: 6px;
+}
 
-/* Pet reroll row — in Complete section */
+/* Pet rollback row — in Complete section */
 #pet-reroll-row { margin: 6px 0 8px; }
 .pet-reroll-label {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  font-size: 12px;
-  color: var(--text-dim);
-  padding: 7px 10px;
+  padding: 8px 10px;
   background: var(--surface);
   border: 1px dashed var(--border);
   border-radius: 2px;
-  line-height: 1.5;
   user-select: none;
 }
 .pet-reroll-label input[type="checkbox"] {
@@ -1881,9 +1945,26 @@ body {
   height: 14px;
   cursor: pointer;
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 3px;
 }
-.pet-reroll-label strong { color: var(--accent-hi); }
+.pet-reroll-label input[type="checkbox"]:disabled { opacity: 0.4; cursor: not-allowed; }
+.pet-reroll-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pet-reroll-heading {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+}
+.pet-reroll-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.pet-reroll-sub strong { color: var(--accent-hi); font-weight: 600; }
 
 /* Reroll confirmation modal */
 #reroll-modal {
