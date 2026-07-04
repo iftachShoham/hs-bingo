@@ -4,62 +4,80 @@ const TOUR_STEPS = [
   {
     targetId: 'side-panel',
     mobileTab: 'play',
+    cardPos: 'center',
     title: 'The Right Panel — Your Control Centre',
     body: 'The panel on the right is where all gameplay actions happen. It is divided into sections: your current task, dice rolling, task completion, team standings, and statistics. Everything you need to play is here.'
   },
   {
     targetId: 'task-section',
     mobileTab: 'play',
+    cardPos: 'center',
     title: '📍 Current Task',
-    body: 'This shows your team\'s current tile number and the task description. The status line shows your progress — <em>"1 / 3 completions"</em> means you need to submit valid proof 3 times to fully clear this tile.'
+    body: 'This shows your team\'s current tile number and the task you need to complete. The status line shows your progress — <em>"1 / 3 completions"</em> means you need to submit valid proof 3 times to fully clear this tile.'
   },
   {
     targetId: 'roll-section',
     mobileTab: 'play',
+    cardPos: 'center',
     title: '🎲 Roll Dice',
     body: 'Roll to move forward on the board. You roll <strong>when first joining</strong> to get onto the board, and again <strong>after completing a task</strong> to advance. Click the purple Roll Dice button — the result appears below it.'
   },
   {
     targetId: 'complete-section',
     mobileTab: 'play',
+    cardPos: 'center',
     title: '✅ Complete a Task',
-    body: 'Submit proof of completion here. Click the <strong>📁 file button</strong> to upload an image, paste a <strong>direct image URL</strong> into the field, or drag-and-drop a file onto the dashed area. A preview appears — then hit the green <strong>Complete</strong> button.'
+    body: 'Submit proof of completion here. Click the <strong>📷 Photo / File button</strong> to upload an image, paste a <strong>direct image URL</strong> into the field, or drag-and-drop a file onto the dashed area. A preview appears — then hit the green <strong>Complete</strong> button.'
   },
   {
     targetId: 'complete-section',
     mobileTab: 'play',
+    cardPos: 'center',
     title: '⚡ Early Completion',
     body: 'Some tiles that require multiple submissions also offer an <strong>Early Completion</strong> option. When eligible, a checkbox appears just above the Complete button — tick it to claim the full tile in a single submission.'
   },
   {
     targetId: 'reroll-toggle-row',
     mobileTab: 'play',
-    title: '⏪ Rollback — Move Backwards',
-    body: 'Stuck on a tile? Tick the <strong>⏪ Rollback checkbox</strong> on the left side of the Roll section, then roll — you will move backwards instead of forwards. The gold badge shows how many charges you have left. You earn rollbacks by completing tiles.'
+    cardPos: 'center',
+    title: '⏪ Rollback &amp; Pet Trade',
+    body: 'There are two ways to earn rollback charges:<br><br>'
+      + '<strong>⏪ Rollback checkbox</strong> — tick it on the left of the Roll Dice section, then roll to move <em>backwards</em> instead of forwards. The gold badge shows how many charges remain. You earn them by completing tiles.<br><br>'
+      + '<strong>🐾 Trade Pet for Rollback</strong> — in the Complete Task section, tick this option instead of completing normally. The tile is <strong>not</strong> marked done, but you gain 1 rollback. Only pets earned while actively pursuing that tile count. A pet can only serve one purpose — tile completion <em>or</em> rollback credit, not both.'
   },
   {
     targetId: 'teams-section',
     mobileTab: 'teams',
+    cardPos: 'center',
     title: '🏆 All Teams',
     body: 'See every team\'s current tile and progress at a glance. The <strong>⚡ Recent Completions</strong> bar at the top shows the latest tiles finished across all teams. Click any team row to open their full completion history with proof images.'
   },
   {
     targetId: 'board-wrapper',
     mobileTab: 'board',
+    cardPos: 'right',
     title: '🗺️ The Board — Snakes &amp; Rats',
-    body: 'The 10×10 board has special tiles: <strong>red snake heads</strong> slide you down to a lower tile, <strong>brown rat tiles</strong> are hidden traps that trigger a penalty wheel, <strong>blue</strong> is your current position, and <strong>green</strong> tiles are ones you have completed. Check the legend at the bottom.'
+    body: 'The 10×10 board has special tiles that change your position. <strong>Red snake heads</strong> slide you down to a lower tile when landed on. <strong>Brown rat tiles</strong> are hidden traps — a penalty wheel spins to pick a team when triggered.<br><br>'
+      + '<strong>Blue</strong> is your current tile, <strong>green</strong> means you\'ve completed it. The <strong>colour legend at the bottom of the board</strong> labels every tile type — check there any time you\'re unsure what a colour means.'
   },
   {
     targetId: 'board-grid',
     mobileTab: 'board',
+    cardPos: 'right',
     title: '🔍 Reading &amp; Clicking Tiles',
-    body: 'Small emoji bullets at the bottom of each tile show which teams are standing on it. A green tile means it has been completed. <strong>Click any tile</strong> to open a detail popup showing the full task, submitted proof images, and which teams are currently there.'
+    body: 'Small emoji bullets at the bottom of each tile show which teams are <strong>currently standing</strong> on it. A green tile means it has been completed by at least one team. A progress bar shows completions on multi-step tiles.<br><br>'
+      + '<strong>Click any tile</strong> to open a detail popup with the full task description, submitted proof images, and which teams are currently there.'
   },
   {
     targetId: 'stats-section',
     mobileTab: 'stats',
+    cardPos: 'center',
     title: '📊 Statistics',
-    body: 'Track game progress with live charts: <strong>Completions per Day</strong> shows daily activity by team, and <strong>Cumulative Completions</strong> shows running totals over time. The <strong>🏅 Top Players</strong> leaderboard ranks individual completions. Click either chart to zoom in for a larger view.'
+    body: 'The Statistics section gives you a live picture of the competition:<br><br>'
+      + '<strong>Completions per Day</strong> (bar chart) — how many tiles each team completed each day, colour-coded by team. Good for spotting who had a strong session.<br><br>'
+      + '<strong>Cumulative Completions</strong> (line chart) — each team\'s running total over time. Use this to see who is pulling ahead and who is catching up.<br><br>'
+      + '<strong>🏅 Top Players</strong> leaderboard — ranks individual players by personal tile completions, not team totals.<br><br>'
+      + 'The colour legend below the charts maps each colour to a team. Click any chart to open a larger zoomed-in view.'
   }
 ];
 
@@ -74,15 +92,15 @@ function openGuide() {
 }
 
 function _showWelcome() {
-  const seen   = localStorage.getItem('hs-bingo-guide-seen');
-  const desc   = document.getElementById('guide-welcome-desc');
+  const seen    = localStorage.getItem('hs-bingo-guide-seen');
+  const desc    = document.getElementById('guide-welcome-desc');
   const tourBtn = document.getElementById('guide-welcome-tour-btn');
 
   if (seen) {
     desc.textContent    = 'Welcome back! Take the guided tour again or browse the quick reference.';
     tourBtn.textContent = '▶ Take the Tour Again';
   } else {
-    desc.innerHTML = 'If this is your first time here, we recommend the <strong>full guided tour</strong> — it walks through every feature with live highlights so you know exactly where to look.';
+    desc.innerHTML      = 'If this is your first time here, we recommend the <strong>full guided tour</strong> — it walks through every feature with live highlights so you know exactly where to look.';
     tourBtn.textContent = '▶ Start Guided Tour';
   }
 
@@ -99,13 +117,13 @@ function startGuidedTour() {
   closeGuideWelcome();
   _currentStep = 0;
   _tourActive  = true;
-  _showTourStep(_currentStep);
+  _renderTourStep(_currentStep);
 }
 
 function guideTourNext() {
   if (_currentStep < TOUR_STEPS.length - 1) {
     _currentStep++;
-    _showTourStep(_currentStep);
+    _advanceTourStep();
   } else {
     _finishTour();
   }
@@ -114,27 +132,41 @@ function guideTourNext() {
 function guideTourPrev() {
   if (_currentStep > 0) {
     _currentStep--;
-    _showTourStep(_currentStep);
+    _advanceTourStep();
   }
+}
+
+// Fade out → update → fade in (prevents position jump flicker)
+function _advanceTourStep() {
+  const card = document.getElementById('guide-tour-card');
+  card.classList.remove('visible');
+  setTimeout(() => _renderTourStep(_currentStep), 210);
 }
 
 function endTour() {
   _tourActive = false;
-  _hideTourCard();
+  const card = document.getElementById('guide-tour-card');
+  card.classList.remove('visible');
+  setTimeout(() => {
+    card.classList.remove('pos-center', 'pos-right');
+    // Reset next button in case it was swapped
+    const nextBtn = document.getElementById('guide-tour-next-btn');
+    nextBtn.onclick  = guideTourNext;
+    nextBtn.textContent = 'Next →';
+    document.getElementById('guide-tour-prev-btn').style.display = '';
+  }, 220);
   _clearSpotlightRing();
 }
 
-function _showTourStep(index) {
+function _renderTourStep(index) {
   const step  = TOUR_STEPS[index];
   const total = TOUR_STEPS.length;
+  const card  = document.getElementById('guide-tour-card');
 
-  // Update card content
+  // Update text content
   document.getElementById('guide-tour-step-badge').textContent = `Step ${index + 1} of ${total}`;
-  document.getElementById('guide-tour-title').textContent = '';
-  // Title may contain entities — use innerHTML for the HTML-encoded ones
-  const titleEl = document.getElementById('guide-tour-title');
-  titleEl.innerHTML = step.title;
-  document.getElementById('guide-tour-body').innerHTML = step.body;
+  document.getElementById('guide-tour-title').innerHTML = step.title;
+  document.getElementById('guide-tour-body').innerHTML  = step.body;
 
   // Progress dots
   const prog = document.getElementById('guide-tour-progress');
@@ -145,26 +177,26 @@ function _showTourStep(index) {
     prog.appendChild(dot);
   }
 
-  // Prev button state
+  // Button states
   document.getElementById('guide-tour-prev-btn').disabled = (index === 0);
-
-  // Next button label
   const nextBtn = document.getElementById('guide-tour-next-btn');
-  nextBtn.textContent = index === total - 1 ? 'Finish ✓' : 'Next →';
+  nextBtn.textContent = (index === total - 1) ? 'Finish ✓' : 'Next →';
+  document.getElementById('guide-tour-skip-row').style.display = (index === total - 1) ? 'none' : '';
 
-  // Show/hide skip row (hide on last step)
-  document.getElementById('guide-tour-skip-row').style.display = index === total - 1 ? 'none' : '';
+  // Card position
+  card.classList.remove('pos-center', 'pos-right');
+  card.classList.add(step.cardPos === 'right' ? 'pos-right' : 'pos-center');
 
-  // Switch mobile tab if needed
+  // Mobile tab switch
   if (typeof switchTab === 'function' && window.innerWidth <= 860) {
     switchTab(step.mobileTab);
   }
 
-  // Spotlight the target element
+  // Spotlight target
   _spotlightElement(step.targetId);
 
-  // Show the card (after a tick so it renders after spotlight)
-  document.getElementById('guide-tour-card').classList.add('visible');
+  // Fade card in (double rAF ensures class applies before transition runs)
+  requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('visible')));
 }
 
 function _finishTour() {
@@ -172,28 +204,17 @@ function _finishTour() {
   _tourActive = false;
   _clearSpotlightRing();
 
-  // Show completion message in the card
-  document.getElementById('guide-tour-step-badge').textContent = 'All done!';
-  document.getElementById('guide-tour-title').textContent = '🎉 Tour Complete';
+  document.getElementById('guide-tour-step-badge').textContent = 'Tour Complete!';
+  document.getElementById('guide-tour-title').textContent = '🎉 All Done';
   document.getElementById('guide-tour-body').innerHTML =
-    "You now know everything you need to play. Use the <strong>Quick Reference</strong> any time you need a reminder about a specific feature.";
+    'You now know everything you need to play. Use the <strong>Quick Reference</strong> any time you need a reminder about a specific feature.';
   document.getElementById('guide-tour-progress').innerHTML = '';
   document.getElementById('guide-tour-prev-btn').style.display = 'none';
-  document.getElementById('guide-tour-next-btn').textContent = 'Open Quick Reference';
-  document.getElementById('guide-tour-next-btn').onclick = () => {
-    endTour();
-    openQuickReference();
-  };
   document.getElementById('guide-tour-skip-row').style.display = 'none';
-}
 
-function _hideTourCard() {
-  document.getElementById('guide-tour-card').classList.remove('visible');
-  // Reset next button in case it was swapped to "Open Quick Reference"
   const nextBtn = document.getElementById('guide-tour-next-btn');
-  nextBtn.onclick = guideTourNext;
-  nextBtn.textContent = 'Next →';
-  document.getElementById('guide-tour-prev-btn').style.display = '';
+  nextBtn.textContent = 'Open Quick Reference';
+  nextBtn.onclick = () => { endTour(); openQuickReference(); };
 }
 
 // ── Quick Reference (existing guide modal) ──
@@ -201,8 +222,7 @@ function _hideTourCard() {
 function openQuickReference() {
   closeGuideWelcome();
   endTour();
-  const modal = document.getElementById('guide-modal');
-  modal.classList.remove('hidden');
+  document.getElementById('guide-modal').classList.remove('hidden');
   const body = document.getElementById('guide-body');
   if (body) body.scrollTop = 0;
   _updateGuideNavActive(null);
@@ -235,7 +255,6 @@ function _spotlightElement(elementId) {
   const target = document.getElementById(elementId);
   const ring   = document.getElementById('guide-spotlight-ring');
   if (!target || !ring) return;
-
   const rect = target.getBoundingClientRect();
   const pad  = 6;
   ring.style.top    = (rect.top    - pad) + 'px';
@@ -243,7 +262,6 @@ function _spotlightElement(elementId) {
   ring.style.width  = (rect.width  + pad * 2) + 'px';
   ring.style.height = (rect.height + pad * 2) + 'px';
   ring.style.display = 'block';
-
   target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -255,13 +273,9 @@ function _clearSpotlightRing() {
 // ── Quick-reference "Highlight in UI" buttons ──
 
 function guideSpotlight(elementId) {
-  const target = document.getElementById(elementId);
-  if (!target) return;
-
   document.getElementById('guide-modal').classList.add('hidden');
   _spotlightElement(elementId);
   document.getElementById('guide-back-btn').style.display = 'block';
-
   clearTimeout(_spotlightTimer);
   _spotlightTimer = setTimeout(resumeGuide, 8000);
 }
@@ -278,7 +292,7 @@ function resumeGuide() {
   document.getElementById('guide-modal').classList.remove('hidden');
 }
 
-// ── Scroll-sync nav active state ──
+// ── Scroll-sync nav active state in quick reference ──
 
 document.addEventListener('DOMContentLoaded', () => {
   const body = document.getElementById('guide-body');
