@@ -362,6 +362,7 @@
     <div id="guide-tour-skip-row">
       <button onclick="openQuickReference()">Skip to Quick Reference →</button>
     </div>
+    <button id="guide-tour-cta-btn" onclick="endTour()">🗡️ Start the Game!</button>
   </div>
 
   <!-- ── How to Play Guide ── -->
@@ -382,6 +383,7 @@
         <button class="guide-nav-btn" onclick="guideJumpTo('guide-s4')">④ Complete Task</button>
         <button class="guide-nav-btn" onclick="guideJumpTo('guide-s5')">⑤ Early Completion</button>
         <button class="guide-nav-btn" onclick="guideJumpTo('guide-s6')">⑥ Rollback</button>
+        <button class="guide-nav-btn" onclick="guideJumpTo('guide-s6b')">⑥b Earning Rollbacks</button>
         <button class="guide-nav-btn" onclick="guideJumpTo('guide-s7')">⑦ All Teams</button>
         <button class="guide-nav-btn" onclick="guideJumpTo('guide-s8')">⑧ The Board</button>
         <button class="guide-nav-btn" onclick="guideJumpTo('guide-s9')">⑨ Tile Details</button>
@@ -484,28 +486,35 @@
         <div class="guide-section" id="guide-s6">
           <div class="guide-step-header">
             <div class="guide-step-num">6</div>
-            <div class="guide-step-title">⏪ Rollback &amp; Pet Trade</div>
-            <span class="guide-step-location">📍 Roll Dice section + Complete Task section</span>
+            <div class="guide-step-title">⏪ Rollback — Move Backwards</div>
+            <span class="guide-step-location">📍 Right sidebar → Roll Dice (left side checkbox)</span>
           </div>
           <div class="guide-step-body">
-            <p>There are two ways to earn rollback charges when your team is stuck:</p>
-            <p><strong>⏪ Direct Rollback</strong></p>
+            <p>If your team is stuck on a difficult tile, use a <strong>Rollback</strong> to move backwards and land on a different tile instead.</p>
             <ul>
               <li>Tick the <strong>⏪ Rollback</strong> checkbox on the <em>left</em> of the Roll Dice section</li>
               <li>Click Roll — you will move <em>backwards</em> rather than forwards</li>
               <li>A confirmation dialog appears before the move is committed</li>
-              <li>The gold badge shows how many charges your team currently has</li>
+              <li>The gold badge shows exactly how many charges your team currently has</li>
             </ul>
-            <p><strong>🐾 Trade Pet for Rollback</strong></p>
-            <ul>
-              <li>In the <strong>Complete Task</strong> section, tick <em>"Trade pet for Rollback"</em> instead of completing normally</li>
-              <li>The tile will <strong>not</strong> be marked complete — you gain 1 rollback charge instead</li>
-              <li>Only pets received while <strong>actively pursuing that tile</strong> count toward this trade</li>
-              <li>A pet can only serve one purpose — tile completion <em>or</em> rollback credit, not both</li>
-            </ul>
-            <div class="guide-tip"><strong>Earning rollbacks normally:</strong> You also gain charges by completing tiles — the more your team completes, the more rollbacks become available.</div>
-            <div class="guide-warn"><strong>Warning:</strong> Rollbacks are limited. Use them when genuinely stuck — the pet trade is a deliberate choice to give up a completion in exchange for flexibility.</div>
+            <div class="guide-warn"><strong>Warning:</strong> Rollbacks are limited — use them when genuinely stuck, not just for a tricky tile.</div>
             <button class="guide-spotlight-btn" onclick="guideSpotlight('reroll-toggle-row')">👁 Highlight Rollback checkbox</button>
+          </div>
+        </div>
+
+        <!-- 6b: Earning Rollbacks -->
+        <div class="guide-section" id="guide-s6b">
+          <div class="guide-step-header">
+            <div class="guide-step-num">6b</div>
+            <div class="guide-step-title">🐾 Earning Rollback Charges</div>
+            <span class="guide-step-location">📍 Right sidebar → Complete Task section</span>
+          </div>
+          <div class="guide-step-body">
+            <p>There are two ways to earn rollback charges:</p>
+            <p><strong>1. Pass Tile 40</strong> — your team automatically receives 1 free rollback charge when you advance past tile 40.</p>
+            <p><strong>2. Trade a Pet</strong> — if you obtained a pet while working on the current tile, tick <em>"Trade pet for Rollback"</em> in the Complete Task section and click <strong>Complete Task</strong> as normal. The tile will <strong>not</strong> be marked complete — your rollback count increases by 1 instead.</p>
+            <div class="guide-tip"><strong>Pet rules:</strong> Only pets received while actively pursuing the current tile count toward this trade. A pet can only serve one purpose — tile completion <em>or</em> rollback credit, not both.</div>
+            <div class="guide-warn"><strong>Note:</strong> Choosing the pet trade is a deliberate decision to give up a completion in exchange for rollback flexibility.</div>
             <button class="guide-spotlight-btn" onclick="guideSpotlight('pet-reroll-row')">👁 Highlight Pet Trade option</button>
           </div>
         </div>

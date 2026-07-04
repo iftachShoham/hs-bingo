@@ -40,10 +40,20 @@ const TOUR_STEPS = [
     targetId: 'reroll-toggle-row',
     mobileTab: 'play',
     cardPos: 'center',
-    title: '⏪ Rollback &amp; Pet Trade',
+    title: '⏪ Rollback — Move Backwards',
+    body: 'If your team is stuck on a tile, you can use a <strong>Rollback</strong> to move backwards and land somewhere new instead.<br><br>'
+      + 'Tick the <strong>⏪ Rollback checkbox</strong> on the left side of the Roll Dice section, then click Roll — you will move <em>backwards</em> rather than forwards. A confirmation dialog appears before the move is committed.<br><br>'
+      + 'The <strong>gold badge</strong> next to the checkbox shows how many rollback charges your team currently has.'
+  },
+  {
+    targetId: 'pet-reroll-row',
+    mobileTab: 'play',
+    cardPos: 'center',
+    title: '🐾 Earning Rollbacks',
     body: 'There are two ways to earn rollback charges:<br><br>'
-      + '<strong>⏪ Rollback checkbox</strong> — tick it on the left of the Roll Dice section, then roll to move <em>backwards</em> instead of forwards. The gold badge shows how many charges remain. You earn them by completing tiles.<br><br>'
-      + '<strong>🐾 Trade Pet for Rollback</strong> — in the Complete Task section, tick this option instead of completing normally. The tile is <strong>not</strong> marked done, but you gain 1 rollback. Only pets earned while actively pursuing that tile count. A pet can only serve one purpose — tile completion <em>or</em> rollback credit, not both.'
+      + '<strong>1. Pass Tile 40</strong> — your team automatically receives 1 free rollback charge when you advance past tile 40.<br><br>'
+      + '<strong>2. Trade a Pet</strong> — if you obtained a pet while working on the current tile, tick <em>"Trade pet for Rollback"</em> and click <strong>Complete Task</strong> as normal. The tile will <strong>not</strong> be marked complete — your rollback count increases by 1 instead.<br><br>'
+      + 'A pet can only serve one purpose: tile completion <em>or</em> rollback credit — not both.'
   },
   {
     targetId: 'teams-section',
@@ -149,11 +159,11 @@ function endTour() {
   card.classList.remove('visible');
   setTimeout(() => {
     card.classList.remove('pos-center', 'pos-right');
-    // Reset next button in case it was swapped
     const nextBtn = document.getElementById('guide-tour-next-btn');
     nextBtn.onclick  = guideTourNext;
     nextBtn.textContent = 'Next →';
     document.getElementById('guide-tour-prev-btn').style.display = '';
+    document.getElementById('guide-tour-cta-btn').style.display = 'none';
   }, 220);
   _clearSpotlightRing();
 }
@@ -176,6 +186,9 @@ function _renderTourStep(index) {
     dot.className = 'tour-dot' + (i === index ? ' tour-dot-active' : '');
     prog.appendChild(dot);
   }
+
+  // Hide completion CTA during normal steps
+  document.getElementById('guide-tour-cta-btn').style.display = 'none';
 
   // Button states
   document.getElementById('guide-tour-prev-btn').disabled = (index === 0);
@@ -205,9 +218,9 @@ function _finishTour() {
   _clearSpotlightRing();
 
   document.getElementById('guide-tour-step-badge').textContent = 'Tour Complete!';
-  document.getElementById('guide-tour-title').textContent = '🎉 All Done';
+  document.getElementById('guide-tour-title').textContent = '🎉 You\'re Ready to Play';
   document.getElementById('guide-tour-body').innerHTML =
-    'You now know everything you need to play. Use the <strong>Quick Reference</strong> any time you need a reminder about a specific feature.';
+    'You now know everything there is to know. Jump straight into the game, or open the <strong>Quick Reference</strong> any time you need a reminder about a specific feature.';
   document.getElementById('guide-tour-progress').innerHTML = '';
   document.getElementById('guide-tour-prev-btn').style.display = 'none';
   document.getElementById('guide-tour-skip-row').style.display = 'none';
@@ -215,6 +228,8 @@ function _finishTour() {
   const nextBtn = document.getElementById('guide-tour-next-btn');
   nextBtn.textContent = 'Open Quick Reference';
   nextBtn.onclick = () => { endTour(); openQuickReference(); };
+
+  document.getElementById('guide-tour-cta-btn').style.display = 'block';
 }
 
 // ── Quick Reference (existing guide modal) ──

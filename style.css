@@ -2607,10 +2607,10 @@ body {
   font-size: 10px;
   font-family: 'Cinzel', serif;
   letter-spacing: 0.1em;
-  color: var(--text-muted);
+  color: var(--accent);
   text-transform: uppercase;
   background: var(--surface2);
-  border: 1px solid var(--border-lo);
+  border: 1px solid var(--border);
   padding: 2px 9px;
   border-radius: 2px;
 }
@@ -2618,7 +2618,7 @@ body {
 #guide-tour-close-btn {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-dim);
   font-size: 11px;
   cursor: pointer;
   padding: 2px 6px;
@@ -2628,21 +2628,46 @@ body {
 #guide-tour-close-btn:hover { color: #e04040; }
 
 #guide-tour-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--accent-hi);
   letter-spacing: 0.03em;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 #guide-tour-body {
-  font-size: 12px;
-  color: var(--text-dim);
-  line-height: 1.65;
+  font-size: 12.5px;
+  color: var(--text);
+  line-height: 1.7;
   margin-bottom: 12px;
 }
 #guide-tour-body strong { color: var(--accent-hi); }
 #guide-tour-body em     { color: var(--text-dim); font-style: italic; }
+
+/* Tour completion CTA */
+#guide-tour-cta-btn {
+  display: none;
+  width: 100%;
+  margin-top: 10px;
+  padding: 13px 20px;
+  background: linear-gradient(180deg, #2a8a1a 0%, #1a6010 100%);
+  border: 1px solid #4ab030;
+  color: #d0ffb0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  border-radius: 2px;
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  box-shadow: var(--bevel-up), 0 4px 20px rgba(40,140,20,0.35);
+  transition: background 0.15s, box-shadow 0.15s;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+#guide-tour-cta-btn:hover {
+  background: linear-gradient(180deg, #38aa24 0%, #228014 100%);
+  box-shadow: var(--bevel-up), 0 6px 28px rgba(40,160,20,0.55);
+  color: #e8ffd8;
+}
 
 /* Progress dots */
 #guide-tour-progress {
