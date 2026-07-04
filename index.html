@@ -484,20 +484,29 @@
         <div class="guide-section" id="guide-s6">
           <div class="guide-step-header">
             <div class="guide-step-num">6</div>
-            <div class="guide-step-title">⏪ Rollback — Move Backwards</div>
-            <span class="guide-step-location">📍 Right sidebar → Roll Dice (left side checkbox)</span>
+            <div class="guide-step-title">⏪ Rollback &amp; Pet Trade</div>
+            <span class="guide-step-location">📍 Roll Dice section + Complete Task section</span>
           </div>
           <div class="guide-step-body">
-            <p>If your team is stuck on a very difficult tile, you can use a <strong>Rollback</strong> to move backwards on the board and land on a new tile instead.</p>
+            <p>There are two ways to earn rollback charges when your team is stuck:</p>
+            <p><strong>⏪ Direct Rollback</strong></p>
             <ul>
               <li>Tick the <strong>⏪ Rollback</strong> checkbox on the <em>left</em> of the Roll Dice section</li>
-              <li>Click the Roll button — you will move backwards rather than forwards</li>
-              <li>A confirmation dialog appears before the rollback is committed, so you can double-check</li>
+              <li>Click Roll — you will move <em>backwards</em> rather than forwards</li>
+              <li>A confirmation dialog appears before the move is committed</li>
+              <li>The gold badge shows how many charges your team currently has</li>
             </ul>
-            <p>The gold badge next to the checkbox shows exactly how many rollback charges your team currently has.</p>
-            <div class="guide-tip"><strong>Earning rollbacks:</strong> You gain charges by completing tiles. The more your team completes, the more rollbacks become available.</div>
-            <div class="guide-warn"><strong>Warning:</strong> Rollbacks are limited — use them wisely when you are genuinely stuck, not just for a tricky tile.</div>
-            <button class="guide-spotlight-btn" onclick="guideSpotlight('reroll-toggle-row')">👁 Highlight in UI</button>
+            <p><strong>🐾 Trade Pet for Rollback</strong></p>
+            <ul>
+              <li>In the <strong>Complete Task</strong> section, tick <em>"Trade pet for Rollback"</em> instead of completing normally</li>
+              <li>The tile will <strong>not</strong> be marked complete — you gain 1 rollback charge instead</li>
+              <li>Only pets received while <strong>actively pursuing that tile</strong> count toward this trade</li>
+              <li>A pet can only serve one purpose — tile completion <em>or</em> rollback credit, not both</li>
+            </ul>
+            <div class="guide-tip"><strong>Earning rollbacks normally:</strong> You also gain charges by completing tiles — the more your team completes, the more rollbacks become available.</div>
+            <div class="guide-warn"><strong>Warning:</strong> Rollbacks are limited. Use them when genuinely stuck — the pet trade is a deliberate choice to give up a completion in exchange for flexibility.</div>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('reroll-toggle-row')">👁 Highlight Rollback checkbox</button>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('pet-reroll-row')">👁 Highlight Pet Trade option</button>
           </div>
         </div>
 
@@ -530,13 +539,14 @@
             <span class="guide-step-location">📍 Main board area</span>
           </div>
           <div class="guide-step-body">
-            <p>The 10×10 board has special tiles that can change your position. The <strong>colour legend</strong> at the bottom of the board explains each type:</p>
+            <p>The 10×10 board has special tiles that can change your position. The <strong>colour legend at the bottom of the board</strong> labels every tile type — refer to it any time you are unsure what a colour means. Here is what each colour indicates:</p>
             <div class="guide-swatch-row"><span class="guide-swatch snake"></span><span><strong>Snake head</strong> — Landing here sends you sliding down the snake to a lower tile!</span></div>
             <div class="guide-swatch-row"><span class="guide-swatch rat"></span><span><strong>Revealed rat</strong> — A hidden trap tile that has been uncovered. When triggered, a wheel spins to determine which team is penalised.</span></div>
             <div class="guide-swatch-row"><span class="guide-swatch my"></span><span><strong>Your current tile</strong> — Highlighted in blue so you can always spot your position instantly.</span></div>
             <div class="guide-swatch-row"><span class="guide-swatch done"></span><span><strong>Completed by you</strong> — Tiles your team has already cleared, shown in green.</span></div>
             <div class="guide-tip" style="margin-top:10px;"><strong>About Rats:</strong> Rat traps are hidden — tiles only show as rat tiles once someone has landed on one and triggered it. When triggered, a spinning wheel determines which team faces the consequence.</div>
-            <button class="guide-spotlight-btn" onclick="guideSpotlight('board-wrapper')">👁 Highlight in UI</button>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('board-wrapper')">👁 Highlight Board</button>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('board-legend')">👁 Highlight Colour Legend</button>
           </div>
         </div>
 
@@ -573,14 +583,12 @@
             <span class="guide-step-location">📍 Right sidebar → Statistics</span>
           </div>
           <div class="guide-step-body">
-            <p>The Statistics section gives you a live view of game activity across all teams.</p>
-            <ul>
-              <li><strong>Completions per Day</strong> — a bar chart showing how many tiles were completed on each day of the competition, broken down by team colour</li>
-              <li><strong>Cumulative Completions</strong> — a line chart showing each team's running total of completions over time, so you can see who is accelerating or falling behind</li>
-              <li><strong>🏅 Top Players</strong> — a leaderboard ranking individual players by the number of tiles they have personally completed</li>
-            </ul>
-            <p>Click either chart to open it in a larger <strong>zoom view</strong> with a full legend, making it easier to read the detail.</p>
-            <div class="guide-tip"><strong>Tip:</strong> The colour legend below the charts matches the team colours used throughout the board — 🟣 purple, 🔴 red, 🔵 blue, 🟡 yellow.</div>
+            <p>The Statistics section gives you a live picture of how the competition is unfolding across all teams.</p>
+            <p><strong>Completions per Day</strong> (bar chart) — shows how many tiles each team completed on each day of the event, colour-coded by team. Use this to spot who had a strong session and who went quiet.</p>
+            <p><strong>Cumulative Completions</strong> (line chart) — tracks each team's running total of tile completions over time. This is the clearest way to see who is ahead in the race and whether anyone is catching up.</p>
+            <p><strong>🏅 Top Players</strong> leaderboard — ranks individual players by the number of tiles they have personally completed, not team totals. Useful for spotting the most active contributors within a team.</p>
+            <p>The <strong>colour legend below the charts</strong> maps each colour to a team — the same colours used on the board and in the teams list. Click any chart to open a <strong>zoomed-in view</strong> with the full legend for easier reading.</p>
+            <div class="guide-tip"><strong>Tip:</strong> The Cumulative chart is the best at-a-glance indicator of who is winning overall — the highest line at any point in time is the leading team.</div>
             <button class="guide-spotlight-btn" onclick="guideSpotlight('stats-section')">👁 Highlight in UI</button>
           </div>
         </div>

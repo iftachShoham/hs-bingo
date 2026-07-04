@@ -2552,12 +2552,9 @@ body {
 
 #guide-tour-card {
   position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
   z-index: 641;
   width: calc(100% - 32px);
-  max-width: 560px;
+  max-width: 520px;
   padding: 16px 18px 14px;
   border-radius: 2px;
   background-color: #1e1508;
@@ -2566,12 +2563,37 @@ body {
   box-shadow: var(--frame), var(--bevel-up), 0 12px 50px rgba(0,0,0,0.92);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.22s ease, transform 0.22s ease;
+  /* position + opacity animated together */
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
+
+/* Default: screen centre */
+#guide-tour-card.pos-center {
+  top: 50%;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translate(-50%, calc(-50% + 18px));
+}
+#guide-tour-card.pos-center.visible {
+  transform: translate(-50%, -50%);
+}
+
+/* Board steps: middle-right */
+#guide-tour-card.pos-right {
+  top: 50%;
+  right: 20px;
+  left: auto;
+  bottom: auto;
+  transform: translateY(calc(-50% + 18px));
+}
+#guide-tour-card.pos-right.visible {
+  transform: translateY(-50%);
+}
+
 #guide-tour-card.visible {
   opacity: 1;
   pointer-events: auto;
-  transform: translateX(-50%) translateY(0);
 }
 
 #guide-tour-header {
@@ -2708,12 +2730,21 @@ body {
   text-decoration-color: var(--text-dim);
 }
 
-/* Mobile tour */
+/* Mobile tour — always bottom-center regardless of step */
 @media (max-width: 860px) {
-  #guide-tour-card {
+  #guide-tour-card.pos-center,
+  #guide-tour-card.pos-right {
+    top: auto;
+    left: 50%;
+    right: auto;
     bottom: 70px;
     max-width: calc(100% - 16px);
     padding: 14px 14px 12px;
+    transform: translateX(-50%) translateY(18px);
+  }
+  #guide-tour-card.pos-center.visible,
+  #guide-tour-card.pos-right.visible {
+    transform: translateX(-50%) translateY(0);
   }
   #guide-tour-body { font-size: 11px; }
   .tour-dot { width: 5px; height: 5px; }
