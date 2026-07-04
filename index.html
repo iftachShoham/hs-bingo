@@ -74,6 +74,7 @@
         <span id="header-team-badge" class="badge"></span>
         <span id="header-tile-badge" class="badge badge-tile"></span>
         <span id="poll-dot" title="Live updates active">●</span>
+        <button id="guide-btn" onclick="openGuide()" title="How to Play">📖 Guide</button>
         <button class="btn-ghost" id="logout-btn">Logout</button>
       </div>
     </header>
@@ -333,6 +334,235 @@
     </div>
   </div>
 
+  <!-- ── How to Play Guide ── -->
+  <div id="guide-modal" class="hidden" onclick="closeGuide()">
+    <div id="guide-card" onclick="event.stopPropagation()">
+      <button id="guide-close-btn" onclick="closeGuide()">✕</button>
+
+      <div id="guide-header">
+        <div id="guide-title">📖 How to Play</div>
+        <div id="guide-subtitle">High Society — Snakes &amp; Rats · Complete Guide</div>
+      </div>
+
+      <nav id="guide-nav">
+        <span class="guide-nav-label">Jump to:</span>
+        <button class="guide-nav-btn" onclick="guideJumpTo('guide-s1')">① Right Bar</button>
+        <button class="guide-nav-btn" onclick="guideJumpTo('guide-s2')">② Current Task</button>
+        <button class="guide-nav-btn" onclick="guideJumpTo('guide-s3')">③ Roll Dice</button>
+        <button class="guide-nav-btn" onclick="guideJumpTo('guide-s4')">④ Complete Task</button>
+        <button class="guide-nav-btn" onclick="guideJumpTo('guide-s5')">⑤ Early Completion</button>
+        <button class="guide-nav-btn" onclick="guideJumpTo('guide-s6')">⑥ Rollback</button>
+        <button class="guide-nav-btn" onclick="guideJumpTo('guide-s7')">⑦ All Teams</button>
+        <button class="guide-nav-btn" onclick="guideJumpTo('guide-s8')">⑧ The Board</button>
+        <button class="guide-nav-btn" onclick="guideJumpTo('guide-s9')">⑨ Tile Details</button>
+        <button class="guide-nav-btn" onclick="guideJumpTo('guide-s10')">⑩ Statistics</button>
+      </nav>
+
+      <div id="guide-body">
+
+        <!-- 1: Right Bar overview -->
+        <div class="guide-section" id="guide-s1">
+          <div class="guide-step-header">
+            <div class="guide-step-num">1</div>
+            <div class="guide-step-title">The Right Panel — Your Control Centre</div>
+            <span class="guide-step-location">📍 Right sidebar</span>
+          </div>
+          <div class="guide-step-body">
+            <p>The panel on the right is where all gameplay actions happen. It is divided into collapsible sections:</p>
+            <ul>
+              <li><strong>📍 Current Task</strong> — your active tile number and the task you need to complete</li>
+              <li><strong>🎲 Roll Dice</strong> — advance (or retreat) on the board after finishing a task</li>
+              <li><strong>✅ Complete Task</strong> — upload proof of a completed task</li>
+              <li><strong>🏆 All Teams</strong> — see every team's position, recent completions, and history</li>
+              <li><strong>📊 Statistics</strong> — charts and a leaderboard tracking completions</li>
+            </ul>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('side-panel')">👁 Highlight in UI</button>
+          </div>
+        </div>
+
+        <!-- 2: Current Task -->
+        <div class="guide-section" id="guide-s2">
+          <div class="guide-step-header">
+            <div class="guide-step-num">2</div>
+            <div class="guide-step-title">📍 Current Task</div>
+            <span class="guide-step-location">📍 Right sidebar → top section</span>
+          </div>
+          <div class="guide-step-body">
+            <p>This section always shows your team's current tile number and the full description of the task you need to complete.</p>
+            <p>The status line beneath the description shows your progress — for example <em>"1 / 3 completions"</em> means you need to submit valid proof 3 times before the tile is fully cleared.</p>
+            <div class="guide-tip"><strong>Tip:</strong> Read the task description carefully before uploading proof — it tells you exactly what counts as a valid submission.</div>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('task-section')">👁 Highlight in UI</button>
+          </div>
+        </div>
+
+        <!-- 3: Roll Dice -->
+        <div class="guide-section" id="guide-s3">
+          <div class="guide-step-header">
+            <div class="guide-step-num">3</div>
+            <div class="guide-step-title">🎲 Roll Dice</div>
+            <span class="guide-step-location">📍 Right sidebar → Roll Dice</span>
+          </div>
+          <div class="guide-step-body">
+            <p>Roll the dice to move forward on the board. There are two situations where you need to roll:</p>
+            <ul>
+              <li><strong>When first starting</strong> — roll to get your team onto the board</li>
+              <li><strong>After completing a task</strong> — once a tile is fully done, roll to advance to the next one</li>
+            </ul>
+            <p>Click the purple <strong>Roll Dice</strong> button and the result appears below it, showing how many spaces you moved and which tile you landed on.</p>
+            <div class="guide-tip"><strong>Tip:</strong> You can only roll when it is your turn to do so. If the button is greyed out, you likely still have an active task to complete first.</div>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('roll-section')">👁 Highlight in UI</button>
+          </div>
+        </div>
+
+        <!-- 4: Complete Task -->
+        <div class="guide-section" id="guide-s4">
+          <div class="guide-step-header">
+            <div class="guide-step-num">4</div>
+            <div class="guide-step-title">✅ Complete Task</div>
+            <span class="guide-step-location">📍 Right sidebar → Complete Task</span>
+          </div>
+          <div class="guide-step-body">
+            <p>Once you have finished a task, submit proof using one of these methods:</p>
+            <ul>
+              <li>Click the <strong>📁 photo/file button</strong> to open a file browser and select an image from your computer</li>
+              <li>Paste a <strong>direct image URL</strong> into the text field (a link that points directly to an image file)</li>
+              <li><strong>Drag and drop</strong> an image file onto the dashed proof area</li>
+              <li><strong>Paste from clipboard</strong> — copy a screenshot and paste it directly into the proof area</li>
+            </ul>
+            <p>A preview will appear once an image is attached. Then click the green <strong>Complete</strong> button to submit.</p>
+            <div class="guide-warn"><strong>Important:</strong> Your submission will be reviewed. Make sure the screenshot clearly shows the completed task.</div>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('complete-section')">👁 Highlight in UI</button>
+          </div>
+        </div>
+
+        <!-- 5: Early Completion -->
+        <div class="guide-section" id="guide-s5">
+          <div class="guide-step-header">
+            <div class="guide-step-num">5</div>
+            <div class="guide-step-title">⚡ Early Completion</div>
+            <span class="guide-step-location">📍 Right sidebar → Complete Task (when eligible)</span>
+          </div>
+          <div class="guide-step-body">
+            <p>Some tiles require multiple completions, but offer an <strong>Early Completion</strong> option — allowing you to claim full credit in a single submission.</p>
+            <p>When this option is available, an <strong>Early Completion</strong> checkbox appears above the Complete button. Tick it before submitting to mark the entire tile as finished in one go.</p>
+            <div class="guide-tip"><strong>Tip:</strong> This checkbox only appears on specific tiles where the game master has enabled it — it will not show up on every task.</div>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('complete-section')">👁 Highlight in UI</button>
+          </div>
+        </div>
+
+        <!-- 6: Rollback -->
+        <div class="guide-section" id="guide-s6">
+          <div class="guide-step-header">
+            <div class="guide-step-num">6</div>
+            <div class="guide-step-title">⏪ Rollback — Move Backwards</div>
+            <span class="guide-step-location">📍 Right sidebar → Roll Dice (left side checkbox)</span>
+          </div>
+          <div class="guide-step-body">
+            <p>If your team is stuck on a very difficult tile, you can use a <strong>Rollback</strong> to move backwards on the board and land on a new tile instead.</p>
+            <ul>
+              <li>Tick the <strong>⏪ Rollback</strong> checkbox on the <em>left</em> of the Roll Dice section</li>
+              <li>Click the Roll button — you will move backwards rather than forwards</li>
+              <li>A confirmation dialog appears before the rollback is committed, so you can double-check</li>
+            </ul>
+            <p>The gold badge next to the checkbox shows exactly how many rollback charges your team currently has.</p>
+            <div class="guide-tip"><strong>Earning rollbacks:</strong> You gain charges by completing tiles. The more your team completes, the more rollbacks become available.</div>
+            <div class="guide-warn"><strong>Warning:</strong> Rollbacks are limited — use them wisely when you are genuinely stuck, not just for a tricky tile.</div>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('reroll-toggle-row')">👁 Highlight in UI</button>
+          </div>
+        </div>
+
+        <!-- 7: All Teams -->
+        <div class="guide-section" id="guide-s7">
+          <div class="guide-step-header">
+            <div class="guide-step-num">7</div>
+            <div class="guide-step-title">🏆 All Teams</div>
+            <span class="guide-step-location">📍 Right sidebar → All Teams</span>
+          </div>
+          <div class="guide-step-body">
+            <p>This section shows the current standing of every team in the game.</p>
+            <ul>
+              <li>Each row shows the team's <strong>colour bullet</strong> (🟣🔴🔵🟡), name, and their current tile number</li>
+              <li>A 🔥 flame next to a name means that team is on a hot completion streak</li>
+              <li>Rollback charges are displayed as a small badge if a team has any remaining</li>
+            </ul>
+            <p>At the top of this section is the <strong>⚡ Recent Completions</strong> bar — small tile thumbnails showing the latest completions from all teams, so you can track rival progress in real time.</p>
+            <p>Click any team row to open their full <strong>completion history</strong>, showing every tile they have finished and the proof they submitted.</p>
+            <div class="guide-tip"><strong>Tip:</strong> Watch the Recent Completions bar to keep an eye on other teams without leaving the page.</div>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('teams-section')">👁 Highlight in UI</button>
+          </div>
+        </div>
+
+        <!-- 8: The Board -->
+        <div class="guide-section" id="guide-s8">
+          <div class="guide-step-header">
+            <div class="guide-step-num">8</div>
+            <div class="guide-step-title">🗺️ The Board — Snakes &amp; Rats</div>
+            <span class="guide-step-location">📍 Main board area</span>
+          </div>
+          <div class="guide-step-body">
+            <p>The 10×10 board has special tiles that can change your position. The <strong>colour legend</strong> at the bottom of the board explains each type:</p>
+            <div class="guide-swatch-row"><span class="guide-swatch snake"></span><span><strong>Snake head</strong> — Landing here sends you sliding down the snake to a lower tile!</span></div>
+            <div class="guide-swatch-row"><span class="guide-swatch rat"></span><span><strong>Revealed rat</strong> — A hidden trap tile that has been uncovered. When triggered, a wheel spins to determine which team is penalised.</span></div>
+            <div class="guide-swatch-row"><span class="guide-swatch my"></span><span><strong>Your current tile</strong> — Highlighted in blue so you can always spot your position instantly.</span></div>
+            <div class="guide-swatch-row"><span class="guide-swatch done"></span><span><strong>Completed by you</strong> — Tiles your team has already cleared, shown in green.</span></div>
+            <div class="guide-tip" style="margin-top:10px;"><strong>About Rats:</strong> Rat traps are hidden — tiles only show as rat tiles once someone has landed on one and triggered it. When triggered, a spinning wheel determines which team faces the consequence.</div>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('board-wrapper')">👁 Highlight in UI</button>
+          </div>
+        </div>
+
+        <!-- 9: Tile Details -->
+        <div class="guide-section" id="guide-s9">
+          <div class="guide-step-header">
+            <div class="guide-step-num">9</div>
+            <div class="guide-step-title">🔍 Reading a Tile &amp; Clicking for Details</div>
+            <span class="guide-step-location">📍 Main board area → any tile</span>
+          </div>
+          <div class="guide-step-body">
+            <p>Each tile on the board shows useful at-a-glance information:</p>
+            <ul>
+              <li>Small <strong>team emoji bullets</strong> at the bottom of a tile show which teams are <em>currently standing</em> on it</li>
+              <li>A <strong>green background</strong> on a tile means at least one team has completed it</li>
+              <li>A <strong>progress bar</strong> shows how many completions a multi-step tile has received so far</li>
+            </ul>
+            <p>Click (or tap on mobile) any tile to open a <strong>detail popup</strong> showing:</p>
+            <ul>
+              <li>The full task description</li>
+              <li>Which teams have completed this tile and their proof images</li>
+              <li>Which teams are currently standing on it</li>
+            </ul>
+            <div class="guide-tip"><strong>Tip:</strong> Clicking tiles is a great way to scout upcoming tasks before you land on them, so you can plan ahead.</div>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('board-grid')">👁 Highlight in UI</button>
+          </div>
+        </div>
+
+        <!-- 10: Statistics -->
+        <div class="guide-section" id="guide-s10">
+          <div class="guide-step-header">
+            <div class="guide-step-num">10</div>
+            <div class="guide-step-title">📊 Statistics</div>
+            <span class="guide-step-location">📍 Right sidebar → Statistics</span>
+          </div>
+          <div class="guide-step-body">
+            <p>The Statistics section gives you a live view of game activity across all teams.</p>
+            <ul>
+              <li><strong>Completions per Day</strong> — a bar chart showing how many tiles were completed on each day of the competition, broken down by team colour</li>
+              <li><strong>Cumulative Completions</strong> — a line chart showing each team's running total of completions over time, so you can see who is accelerating or falling behind</li>
+              <li><strong>🏅 Top Players</strong> — a leaderboard ranking individual players by the number of tiles they have personally completed</li>
+            </ul>
+            <p>Click either chart to open it in a larger <strong>zoom view</strong> with a full legend, making it easier to read the detail.</p>
+            <div class="guide-tip"><strong>Tip:</strong> The colour legend below the charts matches the team colours used throughout the board — 🟣 purple, 🔴 red, 🔵 blue, 🟡 yellow.</div>
+            <button class="guide-spotlight-btn" onclick="guideSpotlight('stats-section')">👁 Highlight in UI</button>
+          </div>
+        </div>
+
+      </div><!-- /guide-body -->
+    </div><!-- /guide-card -->
+  </div><!-- /guide-modal -->
+
+  <!-- Spotlight helpers -->
+  <div id="guide-spotlight-ring"></div>
+  <button id="guide-back-btn" onclick="resumeGuide()">← Back to Guide</button>
+
   <script src="js/countdown.js"></script>
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
@@ -344,5 +574,6 @@
   <script src="js/admin.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/guide.js"></script>
 </body>
 </html>
