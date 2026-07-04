@@ -334,6 +334,36 @@
     </div>
   </div>
 
+  <!-- ── Guide Welcome Screen ── -->
+  <div id="guide-welcome" class="hidden" onclick="closeGuideWelcome()">
+    <div id="guide-welcome-card" onclick="event.stopPropagation()">
+      <div id="guide-welcome-icon">📖</div>
+      <div id="guide-welcome-title">How to Play</div>
+      <div id="guide-welcome-desc"></div>
+      <button id="guide-welcome-tour-btn" onclick="startGuidedTour()"></button>
+      <div id="guide-welcome-or">— or —</div>
+      <button id="guide-welcome-ref-btn" onclick="openQuickReference()">Browse Quick Reference →</button>
+    </div>
+  </div>
+
+  <!-- ── Guided Tour Card (floating, shown during tour) ── -->
+  <div id="guide-tour-card">
+    <div id="guide-tour-header">
+      <span id="guide-tour-step-badge">Step 1 of 10</span>
+      <button id="guide-tour-close-btn" onclick="endTour()">✕ End Tour</button>
+    </div>
+    <div id="guide-tour-title"></div>
+    <div id="guide-tour-body"></div>
+    <div id="guide-tour-progress"></div>
+    <div id="guide-tour-actions">
+      <button id="guide-tour-prev-btn" onclick="guideTourPrev()">← Back</button>
+      <button id="guide-tour-next-btn" onclick="guideTourNext()">Next →</button>
+    </div>
+    <div id="guide-tour-skip-row">
+      <button onclick="openQuickReference()">Skip to Quick Reference →</button>
+    </div>
+  </div>
+
   <!-- ── How to Play Guide ── -->
   <div id="guide-modal" class="hidden" onclick="closeGuide()">
     <div id="guide-card" onclick="event.stopPropagation()">
