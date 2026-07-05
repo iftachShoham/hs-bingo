@@ -34,7 +34,7 @@ const TOUR_STEPS = [
     mobileTab: 'play',
     cardPos: 'center',
     title: '⚡ Early Completion',
-    body: 'Some tiles that require multiple submissions also offer an <strong>Early Completion</strong> option. When eligible, a checkbox appears just above the Complete button — tick it to claim the full tile in a single submission.'
+    body: 'Some tiles require multiple qualifying drops, while some can be completed early by obtaining a specific big drop or multiple smaller drops. For example, a tile requiring 10 Dagannoth Rings or a pet can be completed immediately if you obtain the pet — simply tick the <strong>Early Completion</strong> checkbox before submitting.<br><br><strong>Important:</strong> Pets are single-use. If a pet is used for Early Completion, it cannot also be claimed as a Pet Reroll.'
   },
   {
     targetId: 'reroll-toggle-row',
