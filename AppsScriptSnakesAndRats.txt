@@ -1,0 +1,2889 @@
+// ============================================================
+// HIGH SOCIETY BINGO — Snakes, Ladders & Rats
+// Multi-team architecture with Discord/n8n integration
+// ============================================================
+
+// --- Configuration ---
+const WEB_APP_SECRET = "TestSecret1996boris";
+const GENERAL_WEBHOOK_URL = ""; // Webhook voor algemene game-events (reset, winnaar). Leeg = geen post.
+const SPREADSHEET_ID = "1hHEzf0J4dqeOMlWbSeUZkgkkIElpV1LPE7rPxnS04YY";
+
+const SHEET_BOARD = "Board";
+const SHEET_TEAMS = "Teams";
+const SHEET_TILE_LIST = "Tile List";
+const SHEET_ACTIVITY = "Activity Log";
+
+const SNAKES = { 16: 6, 37: 23, 46: 26, 52: 31, 73: 53, 97: 78, 80: 61 };
+
+// Team visuals (hardcoded per team_id)
+const TEAM_VISUALS = {
+  1: { color: "#9B59B6", bullet: "🟣" },
+  2: { color: "#E74C3C", bullet: "🔴" },
+  3: { color: "#3498DB", bullet: "🔵" },
+  4: { color: "#F1C40F", bullet: "🟡" }
+};
+
+function getTeamColor(teamId) {
+  return TEAM_VISUALS[teamId]?.color || "#808080";
+}
+
+function getTeamBullet(teamId) {
+  return TEAM_VISUALS[teamId]?.bullet || "⚪";
+}
+
+// ============================================================
+// SPREADSHEET HELPERS
+// ============================================================
+
+function getSpreadsheet() {
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
+
+function getCellForTile(tile) {
+  if (tile === 0) return "A39";
+  const leftToRight = ["B", "C", "D", "E", "F", "G", "H", "I", "J", "K"];
+  const rightToLeft = ["K", "J", "I", "H", "G", "F", "E", "D", "C", "B"];
+  const rowIndex = Math.floor((tile - 1) / 10);
+  const sheetRow = 39 - (rowIndex * 4);
+  const posInRow = (tile - 1) % 10;
+  const col = (rowIndex % 2 === 0) ? leftToRight[posInRow] : rightToLeft[posInRow];
+  return col + sheetRow;
+}
+
+// ============================================================
+// TEAM HELPERS
+// ============================================================
+
+function _teamFromRow(row) {
+  return {
+    team_id: row[0],
+    team_name: row[1],
+    channel_id: row[2],
+    // Preserve tile 0 as the valid start position; do not coerce it to 1.
+    current_tile: (row[3] === "" || row[3] === null) ? 0 : Number(row[3]),
+    rats: Number(row[4]) || 0,
+    has_rolled_from_start: row[5] === true || row[5] === "TRUE",
+    pawn_alt_text: row[6] || "",
+    webhook_url: row[7] || "",
+    player_password_hash: row[8] || "",
+    rerolls_available: Number(row[9]) || 0,
+    rerolls_used: Number(row[10]) || 0
+  };
+}
+
+function getTeamByChannelId(channelId) {
+  const sheet = getSpreadsheet().getSheetByName(SHEET_TEAMS);
+  if (!sheet) throw new Error(`Sheet '${SHEET_TEAMS}' not found`);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  const data = sheet.getRange(2, 1, lastRow - 1, 11).getValues();  // Feature 1: 8→9
+  const row = data.find(r => String(r[2]) === String(channelId));
+  return row ? _teamFromRow(row) : null;
+}
+
+
+function getTeamById(teamId) {
+  const sheet = getSpreadsheet().getSheetByName(SHEET_TEAMS);
+  if (!sheet) throw new Error(`Sheet '${SHEET_TEAMS}' not found`);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  const data = sheet.getRange(2, 1, lastRow - 1, 11).getValues();  // Feature 1: 8→9
+  const row = data.find(r => Number(r[0]) === Number(teamId));
+  return row ? _teamFromRow(row) : null;
+}
+
+function getAllTeams() {
+  const sheet = getSpreadsheet().getSheetByName(SHEET_TEAMS);
+  if (!sheet) throw new Error(`Sheet '${SHEET_TEAMS}' not found`);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  const data = sheet.getRange(2, 1, lastRow - 1, 11).getValues();  // Feature 1: 8→9
+  return data.filter(r => r[0] !== "" && r[0] !== null).map(_teamFromRow);
+}
+
+function updateTeamField(teamId, fieldName, value) {
+  const fieldCols = {
+  team_name: 2,
+  channel_id: 3,
+  current_tile: 4,
+  rats: 5,
+  has_rolled_from_start: 6,
+  pawn_alt_text: 7,
+  webhook_url: 8,
+  player_password_hash: 9,
+  rerolls_available: 10,
+  rerolls_used: 11
+};
+  const col = fieldCols[fieldName];
+  if (!col) throw new Error(`Unknown field: ${fieldName}`);
+  const sheet = getSpreadsheet().getSheetByName(SHEET_TEAMS);
+  const lastRow = sheet.getLastRow();
+  const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  const rowIdx = data.findIndex(r => Number(r[0]) === Number(teamId));
+  if (rowIdx === -1) throw new Error(`Team ${teamId} not found`);
+  sheet.getRange(rowIdx + 2, col).setValue(value);
+}
+
+// ============================================================
+// ACTIVITY LOG
+// ============================================================
+
+function logActivity(entry) {
+  const sheet = getSpreadsheet().getSheetByName(SHEET_ACTIVITY);
+  if (!sheet) throw new Error(`Sheet '${SHEET_ACTIVITY}' not found`);
+  sheet.appendRow([
+    new Date(),
+    entry.team_id || "",
+    entry.team_name || "",
+    entry.event_type || "",
+    entry.from_tile || "",
+    entry.to_tile || "",
+    entry.roll_value || "",
+    entry.details || "",
+    entry.discord_user || "",
+    entry.proof_url || ""
+  ]);
+}
+
+function getCompletedTilesForTeam(teamId) {
+  const sheet = getSpreadsheet().getSheetByName(SHEET_ACTIVITY);
+  if (!sheet || sheet.getLastRow() < 2) return new Set();
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
+  const completed = new Set();
+  data.forEach(r => {
+    // Feature 3: also recognise EARLY_COMPLETE so early-completed tiles count as done
+    if (Number(r[1]) === Number(teamId) && (r[3] === "COMPLETE" || r[3] === "EARLY_COMPLETE")) {
+      const tile = Number(r[5]);
+      if (tile >= 1 && tile <= 100) completed.add(tile);
+    }
+  });
+  return completed;
+}
+
+// ============================================================
+// DISCORD WEBHOOKS
+// ============================================================
+
+function sendWebhook(url, message) {
+  if (!url) {
+    return {
+      attempted: false,
+      success: false,
+      code: null,
+      error: "Empty webhook URL"
+    };
+  }
+
+  const cleanUrl = String(url).trim();
+
+  const options = {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify({ content: message }),
+    muteHttpExceptions: true
+  };
+
+  try {
+    const response = UrlFetchApp.fetch(cleanUrl, options);
+    const code = response.getResponseCode();
+
+    return {
+      attempted: true,
+      success: code >= 200 && code < 300,
+      code: code,
+      body: response.getContentText()
+    };
+  } catch (err) {
+    return {
+      attempted: true,
+      success: false,
+      code: null,
+      error: err.message
+    };
+  }
+}
+
+function sendToTeam(teamId, message) {
+  const team = getTeamById(teamId);
+  if (!team) return;
+  sendWebhook(team.webhook_url, message);
+}
+
+function sendGeneralAnnouncement(message) {
+  sendWebhook(GENERAL_WEBHOOK_URL, message);
+}
+
+// ============================================================
+// BOARD RENDERING
+// ============================================================
+
+function renderTeamsOnBoard() {
+  const ss = getSpreadsheet();
+  const boardSheet = ss.getSheetByName(SHEET_BOARD);
+  const tileListSheet = ss.getSheetByName(SHEET_TILE_LIST);
+
+  if (!boardSheet) throw new Error(`Sheet '${SHEET_BOARD}' not found`);
+  if (!tileListSheet) throw new Error(`Sheet '${SHEET_TILE_LIST}' not found`);
+  
+  const tileData = tileListSheet.getDataRange().getValues();
+  const tileContent = {};
+
+  tileData.forEach(row => {
+    if (row[0] !== "" && !isNaN(row[0])) {
+      tileContent[Number(row[0])] = row[1] || "";
+    }
+  });
+  
+  const teams = getAllTeams();
+  const completedByTile = getCompletedTeamsByTile();
+
+  const teamsByTile = {};
+
+  teams.forEach(t => {
+    if (t.current_tile >= 1 && t.current_tile <= 100) {
+      if (!teamsByTile[t.current_tile]) teamsByTile[t.current_tile] = [];
+      teamsByTile[t.current_tile].push(t);
+    }
+  });
+  
+  for (let tile = 1; tile <= 100; tile++) {
+    const cellAddr = getCellForTile(tile);
+    const cell = boardSheet.getRange(cellAddr);
+
+    const original = tileContent[tile] || "";
+    const teamsHere = teamsByTile[tile] || [];
+    const completedTeamIds = completedByTile[tile] || new Set();
+
+    teamsHere.sort((a, b) => Number(a.team_id) - Number(b.team_id));
+
+    const bullets = teamsHere.map(t => getTeamBullet(t.team_id)).join("");
+    const completionBar = buildCompletionBar(completedTeamIds);
+
+    let displayText = "";
+
+    if (bullets) {
+      displayText = `${bullets} ${original}\n${completionBar}`;
+    } else {
+      displayText = `${original}\n${completionBar}`;
+    }
+
+    const richTextBuilder = SpreadsheetApp.newRichTextValue()
+      .setText(displayText);
+
+    // Default style for the full tile text
+    richTextBuilder.setTextStyle(
+      0,
+      displayText.length,
+      SpreadsheetApp.newTextStyle()
+        .setForegroundColor("#000000")
+        .setFontSize(10)
+        .build()
+    );
+
+    // Style the completion bar blocks
+    const barStart = displayText.length - completionBar.length;
+    const teamOrder = [1, 2, 3, 4];
+
+    teamOrder.forEach((teamId, index) => {
+      const isCompleted = completedTeamIds.has(teamId);
+
+      richTextBuilder.setTextStyle(
+        barStart + index,
+        barStart + index + 1,
+        SpreadsheetApp.newTextStyle()
+          .setForegroundColor(isCompleted ? getTeamColor(teamId) : "#D9D9D9")
+          .setBold(true)
+          .setFontSize(14)
+          .build()
+      );
+    });
+
+    cell.setRichTextValue(richTextBuilder.build());
+  }
+
+  renderTeamLegend();
+}
+
+// ============================================================
+// TEAM DISPLAY CELLS
+// ============================================================
+
+const TEAM_DISPLAY_CELLS = {
+  1: "N7",
+  2: "S7",
+  3: "N20",
+  4: "S20"
+};
+
+function getDisplayCellForTeam(teamId) {
+  return TEAM_DISPLAY_CELLS[teamId] || null;
+}
+
+function updateTeamDisplayCell(teamId, tileNumber, tileContent) {
+  const cellAddr = getDisplayCellForTeam(teamId);
+  if (!cellAddr) return;
+  const boardSheet = getSpreadsheet().getSheetByName(SHEET_BOARD);
+  if (!boardSheet) return;
+  const text = `Tile ${tileNumber}: ${tileContent}`;
+  boardSheet.getRange(cellAddr).setValue(text);
+}
+
+function clearTeamDisplayCell(teamId) {
+  const cellAddr = getDisplayCellForTeam(teamId);
+  if (!cellAddr) return;
+  const boardSheet = getSpreadsheet().getSheetByName(SHEET_BOARD);
+  if (!boardSheet) return;
+  boardSheet.getRange(cellAddr).clearContent();
+}
+
+// ============================================================
+// RAT MECHANIC — hidden traps, victim selection, backwards roll
+// ============================================================
+
+const RAT_TILES_LIST = [7, 8, 9, 10, 11, 12, 13, 22, 31, 44, 55, 67, 71, 82, 89, 95];
+const RAT_SELF_PROBABILITY = 0.20;
+const TRIGGERED_RATS_KEY = "triggered_rats";
+
+function getActiveRatTiles() {
+  const props = PropertiesService.getScriptProperties();
+  const triggeredStr = props.getProperty(TRIGGERED_RATS_KEY) || "";
+  const triggered = new Set(triggeredStr.split(",").filter(s => s).map(Number));
+  return new Set(RAT_TILES_LIST.filter(t => !triggered.has(t)));
+}
+
+function isRatTileActive(tile) {
+  return getActiveRatTiles().has(tile);
+}
+
+function markRatTriggered(tile) {
+  const props = PropertiesService.getScriptProperties();
+  const triggeredStr = props.getProperty(TRIGGERED_RATS_KEY) || "";
+  const triggered = new Set(triggeredStr.split(",").filter(s => s).map(Number));
+  triggered.add(tile);
+  props.setProperty(TRIGGERED_RATS_KEY, Array.from(triggered).join(","));
+}
+
+function resetAllRats() {
+  const props = PropertiesService.getScriptProperties();
+  props.deleteProperty(TRIGGERED_RATS_KEY);
+}
+
+function pickRatVictim(landerTeamId) {
+  const teams = getAllTeams();
+
+  const lander = teams.find(t => Number(t.team_id) === Number(landerTeamId));
+
+  // Self-rat is always a flat 20% chance, regardless of current tile
+  if (Math.random() < RAT_SELF_PROBABILITY) {
+    return { victim_team_id: landerTeamId, self_rat: true };
+  }
+
+  // Other-rat pool: only other teams that are actually on the board
+  const others = teams.filter(t =>
+    Number(t.team_id) !== Number(landerTeamId) &&
+    Number(t.current_tile) >= 1
+  );
+
+  // If there are no valid other teams, fallback to self-rat
+  if (others.length === 0) {
+    return { victim_team_id: landerTeamId, self_rat: true };
+  }
+
+  // Weighted selection among other teams:
+  // higher current_tile = higher chance to be hit
+  const weights = others.map(t => Number(t.current_tile) + 1);
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+
+  let pick = Math.random() * totalWeight;
+
+  for (let i = 0; i < others.length; i++) {
+    pick -= weights[i];
+
+    if (pick <= 0) {
+      return {
+        victim_team_id: others[i].team_id,
+        self_rat: false
+      };
+    }
+  }
+
+  // Safety fallback
+  return {
+    victim_team_id: others[others.length - 1].team_id,
+    self_rat: false
+  };
+}
+
+function rollBackwardsForTeam(teamId) {
+  const team = getTeamById(teamId);
+  if (!team) throw new Error(`Team ${teamId} not found`);
+  
+  const completed = getCompletedTilesForTeam(teamId);
+  const startTile = team.current_tile;
+  const dieRoll = Math.floor(Math.random() * 6) + 1;
+  let newTile = Math.max(1, startTile - dieRoll);
+  
+  let eventMessage = `⏪ Rolled ${dieRoll} backwards`;
+  
+  // Forward-shift cap: shift past own completed tiles, but never past startTile
+  const completedShift = shiftForwardPastCompletedTiles(newTile, completed, startTile);
+
+if (completedShift.skippedTiles.length > 0) {
+  newTile = completedShift.finalTile;
+  eventMessage += ` | ${formatCompletedShiftMessage(
+    completedShift.skippedTiles,
+    newTile
+  )}`;
+}
+  
+  // Snake cascade (loop to handle chained snakes, though rare)
+  let safety = 0;
+  while (safety++ < 20) {
+    if (SNAKES[newTile]) {
+      const snakeOrigin = newTile;
+      const snakeDest = SNAKES[newTile];
+      let landed = snakeDest;
+      const snakeShift = shiftForwardPastCompletedTiles(landed, completed, 100);
+
+if (snakeShift.skippedTiles.length > 0) {
+  landed = snakeShift.finalTile;
+  eventMessage += ` | 🐍 Snake bite! ${snakeOrigin} → ${snakeDest}`;
+  eventMessage += ` | ${formatCompletedShiftMessage(
+    snakeShift.skippedTiles,
+    landed
+  )}`;
+} else {
+  eventMessage += ` | 🐍 Snake bite! ${snakeOrigin} → ${landed}`;
+}
+
+newTile = landed;
+      continue;
+    }
+    break;
+  }
+  
+  updateTeamField(teamId, "current_tile", newTile);
+  
+  // Look up tile content for the new landing
+  const tileListSheet = getSpreadsheet().getSheetByName(SHEET_TILE_LIST);
+  let tileContent = "";
+  if (tileListSheet) {
+    const data = tileListSheet.getDataRange().getValues();
+    const row = data.find(r => Number(r[0]) === newTile);
+    tileContent = row ? row[1] : "";
+  }
+  
+  return {
+    team_id: teamId,
+    team_name: team.team_name,
+    from_tile: startTile,
+    to_tile: newTile,
+    die_roll: dieRoll,
+    event_message: eventMessage,
+    tile_content: tileContent
+  };
+}
+
+function triggerRat(landerTeamId, ratTile) {
+  const lander = getTeamById(landerTeamId);
+  if (!lander) throw new Error(`Lander team ${landerTeamId} not found`);
+  
+  const { victim_team_id, self_rat } = pickRatVictim(landerTeamId);
+  const victim = getTeamById(victim_team_id);
+  if (!victim) throw new Error(`Victim team ${victim_team_id} not found`);
+  
+  const backResult = rollBackwardsForTeam(victim_team_id);
+  
+  markRatTriggered(ratTile);
+  
+  logActivity({
+    team_id: landerTeamId,
+    team_name: lander.team_name,
+    event_type: "RAT_TRIGGERED",
+    from_tile: ratTile,
+    to_tile: ratTile,
+    details: `Triggered rat on tile ${ratTile}. ` +
+             (self_rat 
+               ? `Self-rat! ${lander.team_name} hit themselves.`
+               : `Victim: ${victim.team_name} (rolled ${backResult.die_roll} backwards: ${backResult.from_tile} → ${backResult.to_tile})`)
+  });
+  
+  if (!self_rat) {
+    logActivity({
+      team_id: victim_team_id,
+      team_name: victim.team_name,
+      event_type: "RAT_VICTIM",
+      from_tile: backResult.from_tile,
+      to_tile: backResult.to_tile,
+      roll_value: -backResult.die_roll,
+      details: `Hit by rat from ${lander.team_name}'s landing on tile ${ratTile}. ${backResult.event_message}`
+    });
+  }
+
+  let victimNotification = null;
+
+  if (!self_rat) {
+    let msg = `🐀 **${victim.team_name}** got ratted!\n` +
+              `${lander.team_name} triggered a hidden rat on tile ${ratTile}.\n` +
+              `Your team rolled **${backResult.die_roll}** backwards: ${backResult.from_tile} → ${backResult.to_tile}\n`;
+
+    if (
+  backResult.event_message &&
+  (
+    backResult.event_message.includes("Snake") ||
+    backResult.event_message.includes("already completed")
+  )
+) {
+  msg += `${backResult.event_message}\n`;
+}
+
+    if (backResult.tile_content) {
+      msg += `📍 You are now on: **${backResult.tile_content}**`;
+    }
+
+    victimNotification = {
+      channel_id: String(victim.channel_id || "").trim(),
+      message: msg
+    };
+  }
+  
+  // Update victim's display cell to reflect new tile
+  if (backResult.to_tile >= 1 && backResult.to_tile <= 100) {
+    const tileListSheet = getSpreadsheet().getSheetByName(SHEET_TILE_LIST);
+    let victimTileContent = "";
+
+    if (tileListSheet) {
+      const data = tileListSheet.getDataRange().getValues();
+      const row = data.find(r => Number(r[0]) === backResult.to_tile);
+      victimTileContent = row ? row[1] : "";
+    }
+
+    updateTeamDisplayCell(victim_team_id, backResult.to_tile, victimTileContent);
+  }
+  
+  return {
+    triggered_tile: ratTile,
+    lander_team_name: lander.team_name,
+    self_rat: self_rat,
+    victim_team_id: victim.team_id,
+    victim_team_name: victim.team_name,
+    victim_from: backResult.from_tile,
+    victim_to: backResult.to_tile,
+    die_roll: backResult.die_roll,
+    event_message: backResult.event_message,
+    victim_tile_content: backResult.tile_content,
+    victim_notification: victimNotification
+  };
+}
+
+// ============================================================
+// WINNER TRACKING
+// ============================================================
+
+const WINNERS_KEY = "winners";
+
+function getWinners() {
+  const props = PropertiesService.getScriptProperties();
+  const str = props.getProperty(WINNERS_KEY) || "";
+  return str.split(",").filter(s => s).map(Number);
+}
+
+function isWinner(teamId) {
+  return getWinners().includes(Number(teamId));
+}
+
+function markWinner(teamId) {
+  const winners = getWinners();
+  if (!winners.includes(Number(teamId))) {
+    winners.push(Number(teamId));
+    PropertiesService.getScriptProperties().setProperty(WINNERS_KEY, winners.join(","));
+  }
+}
+
+function resetWinners() {
+  PropertiesService.getScriptProperties().deleteProperty(WINNERS_KEY);
+}
+
+// ============================================================
+// GAME LOGIC — multi-team
+// ============================================================
+
+function rollForTeam(teamId) {
+  const team = getTeamById(teamId);
+  if (!team) throw new Error(`Team ${teamId} not found`);
+  
+  // Winner lockout
+  if (isWinner(teamId)) {
+    return {
+      success: false,
+      message: `🏆 ${team.team_name} has already won! No more rolls for you.`
+    };
+  }
+  
+  const completed = getCompletedTilesForTeam(teamId);
+  const currentTile = team.current_tile;
+
+// Safety rule:
+// A team may not roll again until their current tile has been completed.
+// Tile 0 is allowed because that is the starting position.
+// Winning requires completing tile 100, so tile 100 is included in this guard.
+  if (currentTile >= 1 && currentTile <= 100 && !completed.has(currentTile)) {
+  const tileListSheet = getSpreadsheet().getSheetByName(SHEET_TILE_LIST);
+  let currentTileContent = "";
+
+  if (tileListSheet) {
+    const data = tileListSheet.getDataRange().getValues();
+    const row = data.find(r => Number(r[0]) === currentTile);
+    currentTileContent = row ? row[1] : "";
+  }
+
+  let message = `⛔ **${team.team_name}** cannot roll yet.\n`;
+  message += `You must complete your current tile first: **Tile ${currentTile}**`;
+
+  if (currentTileContent) {
+    message += `\n📍 Current task: **${currentTileContent}**`;
+  }
+
+  return {
+    success: false,
+    message: message
+  };
+}
+
+// 1. Roll die (always random 1-6) — use 'let' so we can override to "skip"
+let dice = Math.floor(Math.random() * 6) + 1;
+
+// Track whether the final landing was a direct dice roll (vs. via skip/shift/snake).
+// Rats only trigger on direct landings — never via indirect movement.
+let landedViaDirectRoll = true;
+
+// This stores the tile the dice roll initially landed on,
+// before snakes or completed-tile shifts change the final position.
+let rolledLandingTile = null;
+
+  
+  // 2. Skip-6: if next 6 tiles already completed by this team, jump ahead
+  let nextTile;
+  let eventMessage = "";
+  let allNext6Completed = true;
+const blockedNext6Tiles = [];
+
+for (let i = 1; i <= 6; i++) {
+  const t = currentTile + i;
+
+  if (t > 100 || (!completed.has(t) && !SNAKES[t])) {
+    allNext6Completed = false;
+    break;
+  }
+
+  blockedNext6Tiles.push(t);
+}
+  
+  if (allNext6Completed) {
+  let foundTile = null;
+  const skippedBlockedTiles = [];
+
+  for (let i = currentTile + 1; i <= 100; i++) {
+    if (completed.has(i) || SNAKES[i]) {
+      skippedBlockedTiles.push(i);
+      continue;
+    }
+
+    foundTile = i;
+    break;
+  }
+
+  if (foundTile) {
+    nextTile = foundTile;
+
+    const skippedTilesText = formatSkippedTilesWithSnakes(skippedBlockedTiles);
+
+    eventMessage = `⚠️ Skipped to tile ${nextTile} because tiles ${skippedTilesText} were already completed or snake heads.`;
+
+    dice = "skip";
+    landedViaDirectRoll = false;
+    rolledLandingTile = nextTile;
+  } else {
+    nextTile = currentTile + dice;
+    rolledLandingTile = nextTile;
+  }
+} else {
+  // 3. Normal roll
+  nextTile = currentTile + dice;
+  
+  // 3a. Overshoot bounce-back
+  if (nextTile > 100) {
+    const overshoot = nextTile - 100;
+    nextTile = 100 - overshoot;
+    eventMessage = `Overshot 100! Bounced back to ${nextTile}`;
+  } else if (nextTile === 100) {
+    eventMessage = "Exact roll to 100!";
+  }
+
+  // Store the initial dice landing before completed-tile shifts or snakes.
+  rolledLandingTile = nextTile;
+    
+    // 3b. Forward-shift on own completed tiles
+    const completedShift = shiftForwardPastCompletedTiles(nextTile, completed, 100);
+
+if (completedShift.skippedTiles.length > 0) {
+  nextTile = completedShift.finalTile;
+
+  eventMessage = [
+    formatCompletedShiftMessage(completedShift.skippedTiles, nextTile),
+    eventMessage
+  ].filter(Boolean).join("\n");
+
+  landedViaDirectRoll = false;
+}
+  }
+  
+// 4. Snake cascading
+const specialEvents = [];
+let safety = 0;
+
+while (safety++ < 20) {
+  if (SNAKES[nextTile]) {
+    const snakeOrigin = nextTile;
+    const snakeDest = SNAKES[nextTile];
+
+    let landed = snakeDest;
+
+    const snakeShift = shiftForwardPastCompletedTiles(
+      landed,
+      completed,
+      100
+    );
+
+if (snakeShift.skippedTiles.length > 0) {
+  landed = snakeShift.finalTile;
+
+  specialEvents.push(`🐍 Snake bite! ${snakeOrigin} → ${snakeDest}`);
+  specialEvents.push(formatCompletedShiftMessage(snakeShift.skippedTiles, landed));
+} else {
+  specialEvents.push(`🐍 Snake bite! ${snakeOrigin} → ${landed}`);
+}
+
+    nextTile = landed;
+    landedViaDirectRoll = false;
+    continue;
+  }
+
+  break;
+}
+  
+  // 4b. Reached tile 100 — note it but do NOT mark as winner yet.
+  // Winning is confirmed only when the team completes tile 100.
+  let rolledToHundredEvent = "";
+  if (nextTile === 100) {
+    rolledToHundredEvent = `🎯 ${team.team_name} reached tile 100! Complete it to claim victory!`;
+  }
+
+  // 5. Update team state
+  updateTeamField(teamId, "current_tile", nextTile);
+
+  // 6. Log roll
+  const allEvents = [eventMessage, ...specialEvents, rolledToHundredEvent].filter(Boolean).join("\n");
+  logActivity({
+    team_id: teamId,
+    team_name: team.team_name,
+    event_type: "ROLL",
+    from_tile: currentTile,
+    to_tile: nextTile,
+    roll_value: dice,
+    details: allEvents || "Normal roll"
+  });
+  
+  // 7. Tile content for response
+  const tileListSheet = getSpreadsheet().getSheetByName(SHEET_TILE_LIST);
+  let tileContent = "";
+  if (tileListSheet) {
+    const data = tileListSheet.getDataRange().getValues();
+    const row = data.find(r => Number(r[0]) === nextTile);
+    tileContent = row ? row[1] : "";
+  }
+  
+  // 8. Update lander's display cell
+  updateTeamDisplayCell(teamId, nextTile, tileContent);
+  
+  // 9. Rat trigger check — only on direct dice landing (not via skip/shift/snake), not on tile 100
+  let ratResult = null;
+  if (nextTile !== 100 && landedViaDirectRoll && isRatTileActive(nextTile)) {
+    ratResult = triggerRat(teamId, nextTile);
+  }
+
+return {
+  success: true,
+  team_id: teamId,
+  team_name: team.team_name,
+  dice: dice,
+  from_tile: currentTile,
+  rolled_landing_tile: rolledLandingTile || nextTile,
+  to_tile: nextTile,
+  events: allEvents,
+  tile_content: tileContent,
+  rat_result: ratResult,
+  rolled_to_100: nextTile === 100
+};
+}
+
+// ============================================================
+// COMPLETE TILE
+// ============================================================
+
+// Feature 3: added earlyCompletion parameter
+function completeTileForTeam(teamId, discordUser, proofUrl, earlyCompletion) {
+  const ss = getSpreadsheet();
+  const teamSheet = ss.getSheetByName(SHEET_TEAMS);
+  const tileListSheet = ss.getSheetByName(SHEET_TILE_LIST);
+  const activitySheet = ss.getSheetByName(SHEET_ACTIVITY);
+
+  // Batch read — now 11 columns to include rerolls_available and rerolls_used
+  const allTeamData = teamSheet.getRange(2, 1, teamSheet.getLastRow() - 1, 11).getValues();
+  const allTileData = tileListSheet.getDataRange().getValues();
+  const allActivityData = activitySheet.getLastRow() >= 2
+    ? activitySheet.getRange(2, 1, activitySheet.getLastRow() - 1, 10).getValues()
+    : [];
+
+  // Team from memory
+  const teamRowIndex = allTeamData.findIndex(r => Number(r[0]) === Number(teamId));
+  if (teamRowIndex === -1) throw new Error(`Team ${teamId} not found`);
+  const team = _teamFromRow(allTeamData[teamRowIndex]);
+
+  const currentTile = team.current_tile;
+  if (currentTile < 1 || currentTile > 100) {
+    return {
+      success: false,
+      message: `❌ ${team.team_name} is not on a valid tile (current: ${currentTile}). Roll first!`
+    };
+  }
+
+  // Build tile amounts from column C (default 1)
+  const tileAmounts = {};
+  allTileData.forEach(row => {
+    if (row[0] !== "" && !isNaN(row[0])) {
+      const amt = Number(row[2]);
+      tileAmounts[Number(row[0])] = (amt >= 1) ? amt : 1;
+    }
+  });
+  const requiredAmount = tileAmounts[currentTile] || 1;
+
+  // Feature 3: count existing completions; detect if an EARLY_COMPLETE row already exists
+  let existingCount = 0;
+  let alreadyEarlyCompleted = false;
+  allActivityData.forEach(r => {
+    if (Number(r[1]) === Number(teamId) && Number(r[5]) === currentTile) {
+      if (r[3] === "COMPLETE") {
+        existingCount++;
+      } else if (r[3] === "EARLY_COMPLETE") {
+        alreadyEarlyCompleted = true;
+        existingCount = requiredAmount;  // treat as fully done
+      }
+    }
+  });
+
+  if (existingCount >= requiredAmount) {
+    return {
+      success: false,
+      message: `⚠️ ${team.team_name} already fully completed tile ${currentTile} (${existingCount}/${requiredAmount} submissions done).`
+    };
+  }
+
+  // Feature 3: guard against EARLY_COMPLETE on single-step tiles
+  if (earlyCompletion && requiredAmount === 1) {
+    earlyCompletion = false;
+  }
+
+  // Tile content from memory
+  const tileContentLookup = {};
+  allTileData.forEach(row => {
+    if (row[0] !== "" && !isNaN(row[0])) {
+      tileContentLookup[Number(row[0])] = row[1] || "";
+    }
+  });
+  const tileContent = tileContentLookup[currentTile] || "";
+
+  // Feature 3: use EARLY_COMPLETE event type when flagged
+  const eventType = earlyCompletion ? "EARLY_COMPLETE" : "COMPLETE";
+
+  activitySheet.appendRow([
+    new Date(),
+    teamId,
+    team.team_name,
+    eventType,
+    currentTile,
+    currentTile,
+    "",
+    tileContent,
+    discordUser || "",
+    proofUrl || ""
+  ]);
+
+  const newCount = earlyCompletion ? requiredAmount : (existingCount + 1);
+  const fullyCompleted = newCount >= requiredAmount;
+
+  // Clear display cell only when fully done
+  if (fullyCompleted) {
+    const displayCellAddr = TEAM_DISPLAY_CELLS[teamId];
+    if (displayCellAddr) {
+      ss.getSheetByName(SHEET_BOARD).getRange(displayCellAddr).clearContent();
+    }
+  }
+
+  const result = {
+    success: true,
+    team_id: teamId,
+    team_name: team.team_name,
+    tile: currentTile,
+    tile_content: tileContent,
+    discord_user: discordUser,
+    proof_url: proofUrl,
+    completion_count: newCount,
+    amount_required: requiredAmount,
+    fully_completed: fullyCompleted,
+    early_completion: !!earlyCompletion
+  };
+
+  // Reroll reward: one-time bonus the first time ANY tile >= 40 is fully completed.
+  // Check the details field so this doesn't conflict with pet-trade rerolls.
+  const hasAutoRerollBonus = allActivityData.some(r =>
+    Number(r[1]) === Number(teamId) &&
+    r[3] === "REROLL_GAINED" &&
+    String(r[7] || "").includes("Auto-gained")
+  );
+
+  if (fullyCompleted && currentTile >= 40 && !hasAutoRerollBonus) {
+    const newAvailable = (team.rerolls_available || 0) + 1;
+
+    updateTeamField(teamId, "rerolls_available", newAvailable);
+
+    logActivity({
+      team_id: teamId,
+      team_name: team.team_name,
+      event_type: "REROLL_GAINED",
+      from_tile: currentTile,
+      to_tile: currentTile,
+      details: `Auto-gained 1 reroll for completing tile ${currentTile} (>=40). New total: ${newAvailable}.`
+    });
+
+    result.message = `🎲 Bonus: earned 1 reroll for completing a tile >=40! (${newAvailable} available)`;
+    result.reroll_gained = true;
+    result.rerolls_available = newAvailable;
+  }
+
+  // Win condition: completing tile 100 marks the team as a winner and notifies everyone
+  const extraChannelMessages = [];
+  if (fullyCompleted && currentTile === 100) {
+    markWinner(teamId);
+    const winners = getWinners();
+    const place = winners.length;
+    const placeOrdinal = place === 1 ? "1st" : place === 2 ? "2nd" : place === 3 ? "3rd" : `${place}th`;
+
+    sendGeneralAnnouncement(
+      `🏆🏆🏆 **${team.team_name}** has completed **tile 100** and finished ${placeOrdinal}! 🏆🏆🏆`
+    );
+
+    logActivity({
+      team_id: teamId,
+      team_name: team.team_name,
+      event_type: "WIN",
+      from_tile: 100,
+      to_tile: 100,
+      details: `Finished ${placeOrdinal} place by completing tile 100`
+    });
+
+    result.winner = true;
+    result.place = place;
+    result.place_ordinal = placeOrdinal;
+
+    // Notify all other teams that this team has won
+    const allTeams = allTeamData.filter(r => r[0] !== "" && r[0] !== null).map(_teamFromRow);
+    allTeams.forEach(t => {
+      if (Number(t.team_id) !== Number(teamId) && String(t.channel_id || "").trim()) {
+        extraChannelMessages.push({
+          channel_id: String(t.channel_id).trim(),
+          message: `🏆 **${team.team_name}** has completed tile 100 and finished **${placeOrdinal}**! The race continues!`
+        });
+      }
+    });
+  }
+
+  result.extra_channel_messages = extraChannelMessages;
+
+  // NO renderTeamsOnBoard() — Cloudflare handles it in background
+
+  return result;
+}
+
+// ============================================================
+// RESET (multi-team)
+// ============================================================
+
+function resetGameWebSafe() {
+  const teams = getAllTeams();
+  teams.forEach(t => {
+    updateTeamField(t.team_id, "current_tile", 0);
+    updateTeamField(t.team_id, "rats", 0);
+    updateTeamField(t.team_id, "has_rolled_from_start", false);
+    updateTeamField(t.team_id, "rerolls_available", 0);
+    updateTeamField(t.team_id, "rerolls_used", 0);
+    clearTeamDisplayCell(t.team_id);
+  });
+  
+  // Clear Activity Log (keep header row)
+  const activitySheet = getSpreadsheet().getSheetByName(SHEET_ACTIVITY);
+  if (activitySheet && activitySheet.getLastRow() > 1) {
+    activitySheet.getRange(2, 1, activitySheet.getLastRow() - 1, 10).clearContent();
+  }
+  
+  // Reset all rat tiles (all become active again)
+  resetAllRats();
+  
+  // Reset winners list
+  resetWinners();
+  
+    // Re-render to clean board
+  renderTeamsOnBoard();
+
+  // Force Sheets to apply all pending visual updates before generating/sending image
+  SpreadsheetApp.flush();
+  Utilities.sleep(6000);
+  
+  sendGeneralAnnouncement("🔄 The board has been fully reset. All teams back to tile 0. Rats reset. Winners cleared.");
+  
+  logActivity({
+    event_type: "RESET",
+    details: "Full game reset"
+  });
+}
+
+// ============================================================
+// WEB APP ENDPOINT
+// ============================================================
+
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    
+    if (data.secret !== WEB_APP_SECRET) {
+      return jsonResponse({ success: false, message: "Unauthorized" });
+    }
+    
+    switch (data.command) {
+  case "reset":
+    return handleReset(data);
+  case "ping":
+    return jsonResponse({ success: true, message: "🐀 pong from sheet" });
+  case "render":
+    return handleRender();
+  case "punish":
+    return handlePunish(data);
+  case "roll":
+    return handleRoll(data);
+  case "complete":
+    return handleComplete(data);
+  case "reroll_gain":
+    return handleRerollGain(data);
+  case "board":
+    return handleBoard(data);
+  case "current":
+    return handleCurrent(data);
+  case "move":
+    return handleMove(data);
+  case "revert_complete":        // Feature 2
+    return handleRevertComplete(data);
+  case "set_password":           // Feature 1
+    return handleSetPassword(data);
+  default:
+    return jsonResponse({ success: false, message: `Unknown command: ${data.command}` });
+}
+  } catch (err) {
+    return jsonResponse({ success: false, message: "Error: " + err.message });
+  }
+}
+
+function doGet(e) {
+  var view = e.parameter.view;
+
+  if (view === "board") {
+    // ... existing board code
+  }
+
+  if (view === "boarddata") {
+    return handleBoardData();
+  }
+
+  // ... rest of doGet
+
+  if (view === "activitylog") {
+  return handleActivityLog();
+}
+
+  return jsonResponse({ success: true, message: "Web app is alive. Use POST for commands." });
+}
+
+function handleActivityLog() {
+  const activitySheet = getSpreadsheet().getSheetByName(SHEET_ACTIVITY);
+  if (!activitySheet || activitySheet.getLastRow() < 2) {
+    return ContentService.createTextOutput(JSON.stringify({ events: [] }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  const rows = activitySheet.getRange(2, 1, activitySheet.getLastRow() - 1, 10).getValues();
+  const events = [];
+  rows.forEach(r => {
+    const evType = String(r[3]);
+    if (evType === "COMPLETE" || evType === "EARLY_COMPLETE") {
+      events.push({
+        timestamp:    r[0] ? new Date(r[0]).toISOString() : null,
+        team_id:      Number(r[1]),
+        team_name:    String(r[2]),
+        event_type:   evType,
+        tile:         Number(r[5]),
+        discord_user: String(r[8] || "")
+      });
+    }
+  });
+  return ContentService.createTextOutput(JSON.stringify({ events }))
+    .setMimeType(ContentService.MimeType.JSON);
+}  
+function handleReset(data) {
+  try {
+    resetGameWebSafe();
+
+    const teams = getAllTeams();
+    const channelIds = teams
+      .map(t => String(t.channel_id || "").trim())
+      .filter(id => id !== "");
+
+    return jsonResponse({
+      success: true,
+      message: `🔄 Board reset by ${data.username || "unknown"}`,
+      cleanup_channel_ids: channelIds
+    });
+  } catch (err) {
+    return jsonResponse({ 
+      success: false, 
+      message: "Reset failed: " + err.message 
+    });
+  }
+}
+
+function handleRoll(data) {
+  const lock = LockService.getScriptLock();
+  const hasLock = lock.tryLock(8000);
+
+  if (!hasLock) {
+    return jsonResponse({
+      success: false,
+      message: "⏳ Another command is being processed. Please try again in a few seconds."
+    });
+  }
+
+  try {
+    const channelId = data.channel_id;
+    if (!channelId) {
+      return jsonResponse({ success: false, message: "No channel_id provided" });
+    }
+
+    const team = getTeamByChannelId(channelId);
+    if (!team) {
+      return jsonResponse({
+        success: false,
+        message: "❌ This channel is not assigned to a team. Ask an admin to set it up."
+      });
+    }
+
+    // Feature 1: server-side password validation
+    if (team.player_password_hash && team.player_password_hash !== "") {
+      const clientHash = data.player_password_hash || "";
+      if (clientHash !== team.player_password_hash) {
+        return jsonResponse({ success: false, message: "❌ Incorrect team password." });
+      }
+    }
+
+    // Reroll path: spend a reroll instead of doing a normal forward roll
+    if (data.use_reroll === true) {
+      return handleRerollSpend(team, data);
+    }
+
+    const result = rollForTeam(team.team_id);
+    
+    if (!result.success) {
+      return jsonResponse({
+        success: false,
+        message: result.message
+      });
+    }
+    
+    let message = `🎲 **${team.team_name}** rolled a **${result.dice}**.\n`;
+    message += `🚶 Moved from tile ${result.from_tile} to tile ${result.rolled_landing_tile}\n`;
+
+    if (result.events) {
+      message += `${result.events}\n`;
+    }
+
+    if (result.tile_content) {
+      message += `📍 Landed on: **${result.tile_content}**\n`;
+    }
+    
+    if (result.rat_result) {
+      const r = result.rat_result;
+      message += `\n🐀 **Rat tile triggered!**\n`;
+      if (r.self_rat) {
+        message += `Bad luck — you triggered a rat on yourselves!\n`;
+        message += `${r.victim_team_name} rolled **${r.die_roll}** backwards: ${r.victim_from} → ${r.victim_to}\n`;
+        if (r.event_message && (r.event_message.includes("Snake") || r.event_message.includes("already completed"))) {
+          message += `${r.event_message}\n`;
+        }
+        if (r.victim_tile_content) {
+          message += `📍 Now on: **${r.victim_tile_content}**`;
+        }
+      } else {
+        message += `Target: **${r.victim_team_name}** (rolled **${r.die_roll}** backwards: ${r.victim_from} → ${r.victim_to})`;
+        if (r.event_message && (r.event_message.includes("Snake") || r.event_message.includes("already completed"))) {
+          message += `\n${r.event_message}`;
+        }
+      }
+    }
+    
+    if (result.rolled_to_100) {
+      message += `\n\n🎯 **${team.team_name}** has reached **tile 100**! Complete the tile to claim victory! 🏆`;
+    }
+
+    const extraChannelMessages = [];
+
+    if (result.rat_result && result.rat_result.victim_notification && result.rat_result.victim_notification.channel_id) {
+      extraChannelMessages.push(result.rat_result.victim_notification);
+    }
+
+    return jsonResponse({
+      success: true,
+      message: message,
+      result: result,
+      extra_channel_messages: extraChannelMessages
+    });
+  } catch (err) {
+    return jsonResponse({ success: false, message: "Roll failed: " + err.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function handleRerollSpend(team, data) {
+  // Winner lockout. Reroll spending bypasses rollForTeam(), so guard here too.
+  if (isWinner(team.team_id)) {
+    return jsonResponse({
+      success: false,
+      message: `🏆 ${team.team_name} has already won! No more rolls or rerolls for you.`
+    });
+  }
+
+  // Server-side guard — frontend checkbox is only UX
+  if ((team.rerolls_available || 0) < 1) {
+    return jsonResponse({
+      success: false,
+      message: "❌ No rerolls available."
+    });
+  }
+
+  const rerollsUsed = (team.rerolls_used || 0) + 1;
+  const previousUses = team.rerolls_used || 0;
+
+  let stepBack;
+  let rollDescription;
+
+  if (previousUses === 0) {
+    stepBack = Math.floor(Math.random() * 3) + 1;
+    rollDescription = `1st Rollback: rolled back 1-3 tiles -> moved back ${stepBack}`;
+  } else if (previousUses === 1) {
+    stepBack = Math.floor(Math.random() * 6) + 1;
+    rollDescription = `2nd Rollback: rolled a d6 -> moved back ${stepBack}`;
+  } else {
+    const d1 = Math.floor(Math.random() * 6) + 1;
+    const d2 = Math.floor(Math.random() * 6) + 1;
+    stepBack = Math.max(d1, d2);
+    rollDescription = `3rd+ Rollback: max(${d1}, ${d2}) -> moved back ${stepBack}`;
+  }
+
+  const fromTile = Number(team.current_tile);
+  const completed = getCompletedTilesForTeam(team.team_id);
+
+  let newTile = Math.max(1, fromTile - stepBack);
+
+  // Forward-shift past own completed tiles
+  const shift = shiftForwardPastCompletedTiles(newTile, completed, fromTile);
+  const specialEvents = [];
+  if (shift.skippedTiles.length > 0) {
+    newTile = shift.finalTile;
+    specialEvents.push(formatCompletedShiftMessage(shift.skippedTiles, newTile));
+  }
+
+  // Snake cascade
+  let safety = 0;
+  while (safety++ < 20 && SNAKES[newTile]) {
+    const snakeOrigin = newTile;
+    const dest = SNAKES[newTile];
+    const snakeShift = shiftForwardPastCompletedTiles(dest, completed, 100);
+    if (snakeShift.skippedTiles.length > 0) {
+      newTile = snakeShift.finalTile;
+      specialEvents.push(`🐍 Snake bite! ${snakeOrigin} → ${dest}`);
+      specialEvents.push(formatCompletedShiftMessage(snakeShift.skippedTiles, newTile));
+    } else {
+      newTile = dest;
+      specialEvents.push(`🐍 Snake bite! ${snakeOrigin} → ${newTile}`);
+    }
+  }
+
+  updateTeamField(team.team_id, "current_tile", newTile);
+  updateTeamField(team.team_id, "rerolls_available", team.rerolls_available - 1);
+  updateTeamField(team.team_id, "rerolls_used", rerollsUsed);
+
+  const tileListSheet = getSpreadsheet().getSheetByName(SHEET_TILE_LIST);
+  let tileContent = "";
+
+  if (tileListSheet) {
+    const d = tileListSheet.getDataRange().getValues();
+    const r = d.find(r => Number(r[0]) === newTile);
+    tileContent = r ? r[1] : "";
+  }
+
+  // Keep the team's current-task display cell in sync after a reroll move.
+  updateTeamDisplayCell(team.team_id, newTile, tileContent);
+
+  logActivity({
+    team_id: team.team_id,
+    team_name: team.team_name,
+    event_type: "REROLL_USED",
+    from_tile: fromTile,
+    to_tile: newTile,
+    roll_value: -stepBack,
+    details: rollDescription,
+    discord_user: data.username || ""
+  });
+
+  const message =
+    `🔄 **${team.team_name}** used a Rollback! ${rollDescription}.\n` +
+    `⏪ Moved from tile ${fromTile} to tile ${newTile}.\n` +
+    (specialEvents.length > 0 ? specialEvents.join("\n") + "\n" : "") +
+    (tileContent ? `📍 Now on: **${tileContent}**\n` : "") +
+    `Rollbacks remaining: ${team.rerolls_available - 1}`;
+
+  return jsonResponse({
+    success: true,
+    message,
+    result: {
+      team_id: team.team_id,
+      team_name: team.team_name,
+      from_tile: fromTile,
+      to_tile: newTile,
+      step_back: stepBack,
+      reroll_description: rollDescription,
+      rerolls_available: team.rerolls_available - 1,
+      rerolls_used: rerollsUsed,
+      tile_content: tileContent,
+      was_reroll: true
+    }
+  });
+}
+
+function handleComplete(data) {
+  const lock = LockService.getScriptLock();
+  const hasLock = lock.tryLock(10000);
+
+  if (!hasLock) {
+    return jsonResponse({
+      success: false,
+      message: "⏳ Another command is being processed. Please try again in a few seconds."
+    });
+  }
+
+  try {
+    const channelId = data.channel_id;
+    if (!channelId) {
+      return jsonResponse({ success: false, message: "No channel_id provided" });
+    }
+
+    const team = getTeamByChannelId(channelId);
+    if (!team) {
+      return jsonResponse({
+        success: false,
+        message: "❌ This channel is not assigned to a team. Ask an admin to set it up."
+      });
+    }
+
+    // Feature 1: server-side password validation
+    if (team.player_password_hash && team.player_password_hash !== "") {
+      const clientHash = data.player_password_hash || "";
+      if (clientHash !== team.player_password_hash) {
+        return jsonResponse({ success: false, message: "❌ Incorrect team password." });
+      }
+    }
+
+    const discordUserId = data.user_id || "";
+    const username = data.username || "someone";
+    const proofUrl = data.proof_url || "";
+    if (!proofUrl || String(proofUrl).trim() === "") {
+      return jsonResponse({
+        success: false,
+        message: "❌ Proof is required. Use `/complete proof_url:<link>`."
+      });
+    }
+
+    // Feature 3: read early_completion flag from request
+    const earlyCompletion = data.early_completion === true;
+
+    const result = completeTileForTeam(team.team_id, username, proofUrl, earlyCompletion);
+
+    if (!result.success) {
+      return jsonResponse(result);
+    }
+
+    const userMention = discordUserId ? `<@${discordUserId}>` : username;
+    const count    = result.completion_count;
+    const required = result.amount_required;
+    let message;
+
+    if (result.fully_completed) {
+      const countLabel = required > 1 ? ` (${count}/${required} done)` : "";
+      // Feature 3: show early completion label in Discord message
+      const earlyLabel = result.early_completion ? " 🏆 Early completion!" : "";
+      message = `✅ **${result.team_name}**: ${username} completed Tile ${result.tile}${countLabel}${earlyLabel}`;
+      if (result.tile_content) message += `\n📍 *${result.tile_content}*`;
+      if (required > 1) message += `\n🎲 Team can now roll!`;
+    } else {
+      const remaining = required - count;
+      message = `🔄 **${result.team_name}**: ${username} submitted proof for Tile ${result.tile} (${count}/${required}). Still needs ${remaining} more.`;
+    }
+
+    if (result.message) {
+      message += `\n${result.message}`;
+    }
+
+    if (proofUrl) {
+      message += `\n🖼 Proof: ${proofUrl}`;
+    }
+
+    if (result.winner) {
+      message += `\n\n🏆🏆🏆 **${result.team_name} HAS WON** (${result.place_ordinal} place)! 🏆🏆🏆`;
+    }
+
+    return jsonResponse({
+      success: true,
+      message: message,
+      result: result,
+      extra_channel_messages: result.extra_channel_messages || []
+    });
+  } catch (err) {
+    return jsonResponse({ success: false, message: "Complete failed: " + err.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ============================================================
+// REVERT COMPLETE (Feature 2)
+// ============================================================
+
+function handleRevertComplete(data) {
+  const lock = LockService.getScriptLock();
+  const hasLock = lock.tryLock(10000);
+
+  if (!hasLock) {
+    return jsonResponse({
+      success: false,
+      message: "⏳ Another command is being processed. Please try again in a few seconds."
+    });
+  }
+
+  try {
+    const channelId = data.channel_id;
+    if (!channelId) {
+      return jsonResponse({ success: false, message: "No channel_id provided." });
+    }
+
+    const team = getTeamByChannelId(channelId);
+    if (!team) {
+      return jsonResponse({ success: false, message: "❌ Team not found for that channel ID." });
+    }
+
+    const targetTile = data.tile ? Number(data.tile) : Number(team.current_tile);
+    if (!targetTile || targetTile < 1 || targetTile > 100) {
+      return jsonResponse({ success: false, message: "❌ Invalid or missing tile number." });
+    }
+
+    const activitySheet = getSpreadsheet().getSheetByName(SHEET_ACTIVITY);
+    if (!activitySheet || activitySheet.getLastRow() < 2) {
+      return jsonResponse({ success: false, message: "❌ Activity Log is empty — nothing to revert." });
+    }
+
+    // Read ALL rows first — deleteRow() shifts indexes so we must not call getValues() again after deleting
+    const lastRow  = activitySheet.getLastRow();
+    const allData  = activitySheet.getRange(2, 1, lastRow - 1, 10).getValues();
+
+    // Find the LAST matching row (most recent completion for this team+tile)
+    let targetRowIndex = -1;
+    for (let i = allData.length - 1; i >= 0; i--) {
+      const row = allData[i];
+      if (
+        Number(row[1]) === Number(team.team_id) &&
+        (row[3] === "COMPLETE" || row[3] === "EARLY_COMPLETE") &&
+        Number(row[5]) === targetTile
+      ) {
+        targetRowIndex = i;
+        break;
+      }
+    }
+
+    if (targetRowIndex === -1) {
+      return jsonResponse({
+        success: false,
+        message: `❌ No completion entries found for ${team.team_name} on tile ${targetTile}.`
+      });
+    }
+
+    const revertedEventType  = allData[targetRowIndex][3];
+    const wasEarlyCompletion = revertedEventType === "EARLY_COMPLETE";
+
+    // +2 because allData is 0-based and starts at sheet row 2
+    activitySheet.deleteRow(targetRowIndex + 2);
+
+    // Re-read to count remaining completions for this team+tile
+    const tileListSheet = getSpreadsheet().getSheetByName(SHEET_TILE_LIST);
+    const tileData      = tileListSheet ? tileListSheet.getDataRange().getValues() : [];
+    const tileAmounts   = {};
+    tileData.forEach(row => {
+      if (row[0] !== "" && !isNaN(row[0])) {
+        tileAmounts[Number(row[0])] = (Number(row[2]) >= 1) ? Number(row[2]) : 1;
+      }
+    });
+    const requiredAmount = tileAmounts[targetTile] || 1;
+
+    let newCount = 0;
+    if (activitySheet.getLastRow() >= 2) {
+      const remainingData = activitySheet.getRange(2, 1, activitySheet.getLastRow() - 1, 10).getValues();
+      remainingData.forEach(r => {
+        if (Number(r[1]) === Number(team.team_id) &&
+            (r[3] === "COMPLETE" || r[3] === "EARLY_COMPLETE") &&
+            Number(r[5]) === targetTile) {
+          newCount += (r[3] === "EARLY_COMPLETE") ? 999 : 1;
+        }
+      });
+    }
+    newCount = Math.min(newCount, requiredAmount);
+
+    logActivity({
+      team_id:    team.team_id,
+      team_name:  team.team_name,
+      event_type: "REVERT_COMPLETE",
+      from_tile:  targetTile,
+      to_tile:    targetTile,
+      details:    `Admin reverted ${revertedEventType} on tile ${targetTile}. New count: ${newCount}/${requiredAmount}. Reverted by ${data.username || "unknown"}.`,
+      discord_user: data.username || ""
+    });
+
+    const revertLabel = wasEarlyCompletion ? "early completion" : "one submission";
+    return jsonResponse({
+      success: true,
+      message: `↩️ Reverted ${revertLabel} for ${team.team_name} on tile ${targetTile}. New count: ${newCount}/${requiredAmount}.`,
+      result: {
+        team_id: team.team_id,
+        team_name: team.team_name,
+        tile: targetTile,
+        new_count: newCount,
+        required: requiredAmount,
+        was_early_completion: wasEarlyCompletion
+      }
+    });
+
+  } catch (err) {
+    return jsonResponse({ success: false, message: "Revert failed: " + err.message });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ============================================================
+// SET PASSWORD (Feature 1)
+// ============================================================
+
+function handleSetPassword(data) {
+  try {
+    const channelId = data.channel_id;
+    if (!channelId) {
+      return jsonResponse({ success: false, message: "No channel_id provided." });
+    }
+
+    const team = getTeamByChannelId(channelId);
+    if (!team) {
+      return jsonResponse({ success: false, message: "❌ Team not found." });
+    }
+
+    // Hash is pre-computed client-side (SHA-256 hex) — or empty string to remove password
+    const hash = data.player_password_hash ? String(data.player_password_hash).trim() : "";
+    updateTeamField(team.team_id, "player_password_hash", hash);
+
+    const action = hash ? "set" : "removed";
+    return jsonResponse({
+      success: true,
+      message: `✅ Password ${action} for ${team.team_name}.`
+    });
+  } catch (err) {
+    return jsonResponse({ success: false, message: "Set password failed: " + err.message });
+  }
+}
+
+function handleBoard(data) {
+  try {
+    const teams = getAllTeams();
+
+    let message = "🐀 **High Society Rats & Ladders — Board Status**\n\n";
+
+    teams.forEach(team => {
+      const bullet = getTeamBullet(team.team_id);
+      message += `${bullet} **${team.team_name}** — Tile ${team.current_tile}\n`;
+    });
+
+    // Re-render board before Cloudflare generates/sends the board image
+    renderTeamsOnBoard();
+
+    // Give Google Sheets time to finish rendering
+    SpreadsheetApp.flush();
+    Utilities.sleep(10000);
+    SpreadsheetApp.flush();
+
+    return jsonResponse({
+      success: true,
+      message: message
+    });
+  } catch (err) {
+    return jsonResponse({
+      success: false,
+      message: "Board failed: " + err.message
+    });
+  }
+}
+
+function jsonResponse(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ============================================================
+// TEST FUNCTIONS — run handmatig vanuit editor
+// ============================================================
+
+
+function renderTeamLegend() {
+  const ss = getSpreadsheet();
+  const boardSheet = ss.getSheetByName(SHEET_BOARD);
+  if (!boardSheet) throw new Error(`Sheet '${SHEET_BOARD}' not found`);
+
+  const teams = getAllTeams();
+
+  // Legenda vanaf W6
+  const startRow = 6;
+  const startCol = 23; // W = 23
+
+  // Pak de achtergrondkleur van het board.
+  // Kies een cel waarvan je zeker weet dat die bruin is.
+  const boardBackground = boardSheet.getRange("W20").getBackground();
+
+  // Ruim oud legendagebied op: W6:Z25
+  const cleanupRange = boardSheet.getRange(startRow, startCol, 20, 4);
+
+  cleanupRange
+    .breakApart()
+    .clearContent()
+    .clearFormat()
+    .setBackground(boardBackground)
+    .setBorder(
+      true, true, true, true, true, true,
+      boardBackground,
+      SpreadsheetApp.BorderStyle.SOLID
+    );
+
+  // Titel: W6:Y6
+  boardSheet
+    .getRange(startRow, startCol, 1, 3)
+    .merge()
+    .setValue("Team Legend")
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center")
+    .setVerticalAlignment("middle")
+    .setBackground("#D9EAD3");
+
+  // Header: W7:Y7
+  boardSheet
+    .getRange(startRow + 1, startCol, 1, 3)
+    .setValues([["Icon", "Team", "Tile"]])
+    .setFontWeight("bold")
+    .setHorizontalAlignment("center")
+    .setVerticalAlignment("middle")
+    .setBackground("#F3F3F3");
+
+  // Teamrijen: W8:Y...
+  teams.forEach((team, index) => {
+    const row = startRow + 2 + index;
+    const color = getTeamColor(team.team_id);
+    const bullet = getTeamBullet(team.team_id);
+
+    boardSheet
+      .getRange(row, startCol)
+      .setValue(bullet)
+      .setFontSize(14)
+      .setHorizontalAlignment("center")
+      .setVerticalAlignment("middle")
+      .setBackground(color);
+
+    boardSheet
+      .getRange(row, startCol + 1)
+      .setValue(team.team_name)
+      .setFontWeight("bold")
+      .setVerticalAlignment("middle")
+      .setBackground("#FFFFFF");
+
+    boardSheet
+      .getRange(row, startCol + 2)
+      .setValue(team.current_tile)
+      .setHorizontalAlignment("center")
+      .setVerticalAlignment("middle")
+      .setBackground("#FFFFFF");
+  });
+
+  // Echte tabel opnieuw zwart omlijnen: alleen W6:Y...
+  const totalRows = teams.length + 2;
+
+  boardSheet
+    .getRange(startRow, startCol, totalRows, 3)
+    .setBorder(
+      true, true, true, true, true, true,
+      "#000000",
+      SpreadsheetApp.BorderStyle.SOLID
+    )
+    .setVerticalAlignment("middle");
+
+  // Kolom Z blijft onderdeel van de bruine achtergrond
+  boardSheet
+    .getRange(startRow, startCol + 3, 20, 1)
+    .clearContent()
+    .clearFormat()
+    .setBackground(boardBackground)
+    .setBorder(
+      true, true, true, true, true, true,
+      boardBackground,
+      SpreadsheetApp.BorderStyle.SOLID
+    );
+
+  // Kolombreedtes
+  boardSheet.setColumnWidth(startCol, 50);       // W
+  boardSheet.setColumnWidth(startCol + 1, 120);  // X
+  boardSheet.setColumnWidth(startCol + 2, 60);   // Y
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function waitForBoardRender(ms) {
+  SpreadsheetApp.flush();
+  Utilities.sleep(ms || 1000);
+  SpreadsheetApp.flush();
+}
+function testTeam2Webhook() {
+  sendToTeam(2, "🐀 Test message to Team 2 webhook");
+}
+function debugTriggeredRats() {
+  const props = PropertiesService.getScriptProperties();
+  Logger.log("Triggered rats: " + (props.getProperty(TRIGGERED_RATS_KEY) || "none"));
+  Logger.log("Active rats: " + Array.from(getActiveRatTiles()).join(","));
+}
+function testRatBackwardsCompletedTile() {
+  const teamId = 2;
+
+  // Zet Team 2 op tile 10
+  updateTeamField(teamId, "current_tile", 10);
+
+  // Voeg fake completed tiles toe voor Team 2 op tile 7, 8 en 9
+  [7, 8, 9].forEach(tile => {
+    logActivity({
+      team_id: teamId,
+      team_name: "Team 2",
+      event_type: "COMPLETE",
+      from_tile: tile,
+      to_tile: tile,
+      details: `TEST completed tile ${tile}`
+    });
+  });
+
+  // Forceer handmatig de test door rollBackwardsForTeam te draaien
+  const result = rollBackwardsForTeam(teamId);
+
+  Logger.log(JSON.stringify(result, null, 2));
+
+  renderTeamsOnBoard();
+}
+
+function getCompletedTeamsByTile() {
+  const sheet = getSpreadsheet().getSheetByName(SHEET_ACTIVITY);
+  const completedByTile = {};
+
+  if (!sheet || sheet.getLastRow() < 2) {
+    return completedByTile;
+  }
+
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
+
+  data.forEach(row => {
+    const teamId = Number(row[1]);
+    const eventType = row[3];
+    const tile = Number(row[5]);
+
+    // Feature 3: also count EARLY_COMPLETE rows as a full completion
+    if ((eventType === "COMPLETE" || eventType === "EARLY_COMPLETE") && tile >= 1 && tile <= 100) {
+      if (!completedByTile[tile]) {
+        completedByTile[tile] = new Set();
+      }
+
+      completedByTile[tile].add(teamId);
+    }
+  });
+
+  return completedByTile;
+}
+
+function buildCompletionBar(completedTeamIds) {
+  const teamOrder = [1, 2, 3, 4];
+
+  return teamOrder
+    .map(teamId => completedTeamIds.has(teamId) ? "▰" : "▱")
+    .join("");
+}
+function handleCurrent(data) {
+  try {
+    const channelId = data.channel_id;
+
+    if (!channelId) {
+      return jsonResponse({
+        success: false,
+        message: "No channel_id provided"
+      });
+    }
+
+    const team = getTeamByChannelId(channelId);
+
+    if (!team) {
+      return jsonResponse({
+        success: false,
+        message: "❌ This channel is not assigned to a team. Ask an admin to set it up."
+      });
+    }
+
+    const currentTile = Number(team.current_tile);
+
+    if (currentTile < 1 || currentTile > 100) {
+      return jsonResponse({
+        success: true,
+        message: `📍 **${team.team_name}** is not on the board yet. Use \`/roll\` to start.`
+      });
+    }
+
+    const tileListSheet = getSpreadsheet().getSheetByName(SHEET_TILE_LIST);
+    let tileContent = "";
+
+    if (tileListSheet) {
+      const data = tileListSheet.getDataRange().getValues();
+      const row = data.find(r => Number(r[0]) === currentTile);
+      tileContent = row ? row[1] : "";
+    }
+
+    const completed = getCompletedTilesForTeam(team.team_id);
+    const isCompleted = completed.has(currentTile);
+
+    let message = `📍 **${team.team_name} — Current Task**\n`;
+    message += `Tile: **${currentTile}**\n`;
+
+    if (tileContent) {
+      message += `Task: **${tileContent}**\n`;
+    } else {
+      message += `Task: _No task found for this tile._\n`;
+    }
+
+    if (isCompleted) {
+      message += `\n✅ This tile is already completed. You should be able to roll again.`;
+    } else {
+      message += `\n⏳ This tile is not completed yet. Use \`/complete\` with proof when done.`;
+    }
+
+    return jsonResponse({
+      success: true,
+      message: message,
+      result: {
+        team_id: team.team_id,
+        team_name: team.team_name,
+        current_tile: currentTile,
+        tile_content: tileContent,
+        completed: isCompleted
+      }
+    });
+
+  } catch (err) {
+    return jsonResponse({
+      success: false,
+      message: "Current task failed: " + err.message
+    });
+  }
+}
+
+function handleMove(data) {
+  const lock = LockService.getScriptLock();
+  const hasLock = lock.tryLock(10000);
+
+  if (!hasLock) {
+    return jsonResponse({
+      success: false,
+      message: "⏳ Another command is being processed. Please try again in a few seconds."
+    });
+  }
+
+  try {
+    const channelId = data.channel_id;
+
+    if (!channelId) {
+      return jsonResponse({
+        success: false,
+        message: "No channel_id provided"
+      });
+    }
+
+    const team = getTeamByChannelId(channelId);
+
+    if (!team) {
+      return jsonResponse({
+        success: false,
+        message: "❌ This channel is not assigned to a team. Ask an admin to set it up."
+      });
+    }
+
+    const targetTile = Number(data.tile);
+
+    if (!Number.isInteger(targetTile) || targetTile < 1 || targetTile > 100) {
+      return jsonResponse({
+        success: false,
+        message: "❌ Invalid tile. Please choose a tile between 1 and 100."
+      });
+    }
+
+    // Manual moves may NOT place a team directly on a snake head.
+    // Rat tiles are allowed, but rats are NOT triggered by /move.
+    if (SNAKES[targetTile]) {
+      return jsonResponse({
+        success: false,
+        message: `❌ You cannot manually move a team to tile ${targetTile}, because it is a snake head. Choose another tile.`
+      });
+    }
+
+    const fromTile = Number(team.current_tile);
+    const toTile = targetTile;
+
+    const tileListSheet = getSpreadsheet().getSheetByName(SHEET_TILE_LIST);
+    let tileContent = "";
+
+    if (tileListSheet) {
+      const tileData = tileListSheet.getDataRange().getValues();
+      const row = tileData.find(r => Number(r[0]) === toTile);
+      tileContent = row ? row[1] : "";
+    }
+
+    updateTeamField(team.team_id, "current_tile", toTile);
+updateTeamDisplayCell(team.team_id, toTile, tileContent);
+
+// Re-render the visual Google Sheet board after the manual move
+renderTeamsOnBoard();
+SpreadsheetApp.flush();
+
+logActivity({
+      team_id: team.team_id,
+      team_name: team.team_name,
+      event_type: "MOVE",
+      from_tile: fromTile,
+      to_tile: toTile,
+      roll_value: "",
+      details: `Manual move by ${data.username || "unknown"} from tile ${fromTile} to tile ${toTile}. Snake heads blocked. Rats not triggered by manual move.`,
+      discord_user: data.username || ""
+    });
+
+    let message = `➡️ **${team.team_name}** was manually moved from tile **${fromTile}** to tile **${toTile}**.\n`;
+    message += `This tile is now the team's current tile`;
+
+    if (isRatTileActive(toTile)) {
+      message += `\n🐀 Note: tile ${toTile} is a rat tile, but rats are **not triggered** by manual moves.`;
+    }
+
+    if (tileContent) {
+      message += `\n📍 Current task: **${tileContent}**`;
+    }
+
+    return jsonResponse({
+      success: true,
+      message: message,
+      result: {
+        team_id: team.team_id,
+        team_name: team.team_name,
+        from_tile: fromTile,
+        to_tile: toTile,
+        tile_content: tileContent,
+        manual_move: true,
+        rat_triggered: false
+      }
+    });
+
+  } catch (err) {
+    return jsonResponse({
+      success: false,
+      message: "Move failed: " + err.message
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function formatSkippedTilesWithSnakes(tiles) {
+  if (!tiles || tiles.length === 0) return "";
+
+  const labels = tiles.map(tile => {
+    if (SNAKES[tile]) {
+      return `${tile} (snake)`;
+    }
+
+    return String(tile);
+  });
+
+  if (labels.length === 1) {
+    return labels[0];
+  }
+
+  if (labels.length === 2) {
+    return `${labels[0]} and ${labels[1]}`;
+  }
+
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
+function formatTileList(tiles) {
+  if (!tiles || tiles.length === 0) return "";
+
+  if (tiles.length === 1) {
+    return String(tiles[0]);
+  }
+
+  if (tiles.length === 2) {
+    return `${tiles[0]} and ${tiles[1]}`;
+  }
+
+  return `${tiles.slice(0, -1).join(", ")} and ${tiles[tiles.length - 1]}`;
+}
+
+function shiftForwardPastCompletedTiles(startTile, completed, maxTile) {
+  const skippedTiles = [];
+  let newTile = startTile;
+
+  while (
+    newTile < maxTile &&
+    completed.has(newTile) &&
+    !SNAKES[newTile]
+  ) {
+    skippedTiles.push(newTile);
+    newTile++;
+  }
+
+  return {
+    finalTile: newTile,
+    skippedTiles: skippedTiles
+  };
+}
+
+function formatCompletedShiftMessage(skippedTiles, finalTile) {
+  if (!skippedTiles || skippedTiles.length === 0) {
+    return "";
+  }
+
+  const tilesText = formatTileList(skippedTiles);
+
+  if (skippedTiles.length === 1) {
+    return `➡️ Moved forward to tile ${finalTile} because tile ${tilesText} was already completed.`;
+  }
+
+  return `➡️ Moved forward to tile ${finalTile} because tiles ${tilesText} were already completed.`;
+}
+
+function handleBoardData() {
+  const teams = getAllTeams();
+
+  const tileListSheet = getSpreadsheet().getSheetByName(SHEET_TILE_LIST);
+  const tileData = tileListSheet ? tileListSheet.getDataRange().getValues() : [];
+  const tileContentMap = {};
+  const tileAmountMap = {};
+
+  tileData.forEach(row => {
+    if (row[0] !== "" && !isNaN(row[0])) {
+      tileContentMap[Number(row[0])] = row[1] || "";
+      const amt = Number(row[2]);
+      tileAmountMap[Number(row[0])] = (amt >= 1) ? amt : 1;
+    }
+  });
+
+  const completedByTile = getCompletedTeamsByTile();
+
+  // Convert Sets to arrays for JSON serialization
+  const completedByTileJson = {};
+  for (const [tile, teamSet] of Object.entries(completedByTile)) {
+    completedByTileJson[tile] = Array.from(teamSet);
+  }
+
+  // completionCountsByTile: { "tileNum": { "teamId": count } }
+  // Count COMPLETE rows (EARLY_COMPLETE counts as requiredAmount)
+  const activitySheet = getSpreadsheet().getSheetByName(SHEET_ACTIVITY);
+  const completionCountsByTile = {};
+  if (activitySheet && activitySheet.getLastRow() >= 2) {
+    const actData = activitySheet.getRange(2, 1, activitySheet.getLastRow() - 1, 10).getValues();
+    actData.forEach(r => {
+      const teamId = String(Number(r[1]));
+      const evType = r[3];
+      const tile   = String(Number(r[5]));
+      if ((evType === "COMPLETE" || evType === "EARLY_COMPLETE") && Number(tile) >= 1 && Number(tile) <= 100) {
+        if (!completionCountsByTile[tile]) completionCountsByTile[tile] = {};
+        if (!completionCountsByTile[tile][teamId]) completionCountsByTile[tile][teamId] = 0;
+        if (evType === "EARLY_COMPLETE") {
+          completionCountsByTile[tile][teamId] = tileAmountMap[Number(tile)] || 1;
+        } else {
+          completionCountsByTile[tile][teamId]++;
+        }
+      }
+    });
+  }
+
+  const triggeredStr = PropertiesService.getScriptProperties().getProperty(TRIGGERED_RATS_KEY) || "";
+  const triggeredRats = triggeredStr.split(",").filter(s => s).map(Number);
+
+  return ContentService.createTextOutput(JSON.stringify({
+    teams: teams,
+    tileContentMap: tileContentMap,
+    tileAmountMap: tileAmountMap,
+    completedByTile: completedByTileJson,
+    completionCountsByTile: completionCountsByTile,
+    snakes: SNAKES,
+    triggeredRats: triggeredRats
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+function listImages() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const images = sheet.getImages();
+  
+  images.forEach((img, i) => {
+    Logger.log("Image " + i + " - Alt text: " + img.getAltTextTitle());
+    
+    // For OverGridImages, get the URL
+    const url = img.getUrl();
+    if (url) {
+      Logger.log("URL: " + url);
+    }
+  });
+}
+function handleRender() {
+  try {
+    renderTeamsOnBoard();
+    return jsonResponse({ success: true, message: "Board rendered" });
+  } catch (err) {
+    return jsonResponse({ success: false, message: "Render failed: " + err.message });
+  }
+}
+function handlePunish(data) {
+  const lock = LockService.getScriptLock();
+  const hasLock = lock.tryLock(10000);
+
+  if (!hasLock) {
+    return jsonResponse({
+      success: false,
+      message: "⏳ Another command is being processed. Please try again in a few seconds."
+    });
+  }
+
+  try {
+    const channelId = data.channel_id;
+
+    if (!channelId) {
+      return jsonResponse({
+        success: false,
+        message: "No channel_id provided"
+      });
+    }
+
+    const team = getTeamByChannelId(channelId);
+
+    if (!team) {
+      return jsonResponse({
+        success: false,
+        message: "❌ This channel is not assigned to a team. Ask an admin to set it up."
+      });
+    }
+
+    const currentTile = Number(team.current_tile);
+
+    if (currentTile < 1 || currentTile > 100) {
+      return jsonResponse({
+        success: false,
+        message: `❌ ${team.team_name} is not on the board yet, so they cannot be punished.`
+      });
+    }
+
+    const result = rollBackwardsForTeam(team.team_id);
+
+    logActivity({
+      team_id: team.team_id,
+      team_name: team.team_name,
+      event_type: "PUNISH",
+      from_tile: result.from_tile,
+      to_tile: result.to_tile,
+      roll_value: -result.die_roll,
+      details: `Punishment by ${data.username || "unknown"}. ${result.event_message}`,
+      discord_user: data.username || ""
+    });
+
+    if (result.to_tile >= 1 && result.to_tile <= 100) {
+      updateTeamDisplayCell(team.team_id, result.to_tile, result.tile_content || "");
+      // Re-render the visual Google Sheet board after the punishment
+renderTeamsOnBoard();
+SpreadsheetApp.flush();
+    }
+
+    renderTeamsOnBoard();
+    SpreadsheetApp.flush();
+
+    let message = `⏪ **${team.team_name}** has been punished!\n`;
+    message += `Rolled **${result.die_roll}** backwards: tile **${result.from_tile}** → tile **${result.to_tile}**\n`;
+
+    if (result.event_message) {
+      message += `${result.event_message}\n`;
+    }
+
+    if (result.tile_content) {
+      message += `📍 New current task: **${result.tile_content}**\n`;
+    }
+
+    message += `This tile is now the team's current tile`;
+
+    return jsonResponse({
+      success: true,
+      message: message,
+      result: {
+        team_id: team.team_id,
+        team_name: team.team_name,
+        from_tile: result.from_tile,
+        to_tile: result.to_tile,
+        die_roll: result.die_roll,
+        tile_content: result.tile_content,
+        event_message: result.event_message
+      }
+    });
+
+  } catch (err) {
+    return jsonResponse({
+      success: false,
+      message: "Punish failed: " + err.message
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ============================================================
+// FULL GAME SIMULATION TEST — does not mutate live game state
+// ============================================================
+
+function runFullGameSimulation() {
+  const MAX_ROUNDS = 1000;
+  const TEAM_IDS = [1, 2, 3, 4];
+
+  const realTeams = getAllTeams();
+  const teamNamesById = {};
+
+  realTeams.forEach(t => {
+    teamNamesById[Number(t.team_id)] = t.team_name;
+  });
+
+  const teams = TEAM_IDS.map(teamId => ({
+    team_id: teamId,
+    team_name: teamNamesById[teamId] || `Team ${teamId}`,
+    current_tile: 0,
+    completed: new Set(),
+    finished: false,
+    rolls: 0,
+    completed_count: 0,
+    snake_count: 0,
+    rat_triggered_count: 0,
+    rat_victim_count: 0,
+    skip_count: 0,
+    bounce_count: 0
+  }));
+
+  const triggeredRats = new Set();
+  const events = [];
+
+  let round = 0;
+
+  while (round < MAX_ROUNDS && teams.some(t => !t.finished)) {
+    round++;
+
+    for (const team of teams) {
+      if (team.finished) continue;
+
+      const result = simulateRollForTeam(team, teams, triggeredRats);
+
+      team.rolls++;
+      team.current_tile = result.to_tile;
+
+      if (result.snaked) team.snake_count += result.snake_count || 1;
+      if (result.skipped) team.skip_count++;
+      if (result.bounced) team.bounce_count++;
+      if (result.rat_triggered) team.rat_triggered_count++;
+
+      // Auto-complete the final landing tile for simulation purposes.
+      if (team.current_tile >= 1 && team.current_tile <= 100 && !team.completed.has(team.current_tile)) {
+        team.completed.add(team.current_tile);
+        team.completed_count++;
+      }
+
+      if (team.current_tile === 100) {
+        team.finished = true;
+      }
+
+      events.push([
+        round,
+        team.team_id,
+        team.team_name,
+        result.dice,
+        result.from_tile,
+        result.rolled_landing_tile,
+        result.to_tile,
+        result.event_text,
+        result.rat_text || ""
+      ]);
+    }
+  }
+
+  writeSimulationOutput(teams, events, triggeredRats, round);
+}
+
+function simulateRollForTeam(team, allTeams, triggeredRats) {
+  const fromTile = Number(team.current_tile);
+  const dice = Math.floor(Math.random() * 6) + 1;
+
+  let nextTile = fromTile + dice;
+  let rolledLandingTile = nextTile;
+
+  const eventLines = [];
+  let landedViaDirectRoll = true;
+  let skipped = false;
+  let snaked = false;
+  let snakeCount = 0;
+  let bounced = false;
+  let ratTriggered = false;
+  let ratText = "";
+
+  // Skip logic: if the next 6 tiles are all blocked by completed tiles or snake heads,
+  // skip forward to the first non-blocked tile.
+  let allNext6Blocked = true;
+
+  for (let i = 1; i <= 6; i++) {
+    const t = fromTile + i;
+
+    if (t > 100 || (!team.completed.has(t) && !SNAKES[t])) {
+      allNext6Blocked = false;
+      break;
+    }
+  }
+
+  if (allNext6Blocked) {
+    const skippedBlockedTiles = [];
+    let foundTile = null;
+
+    for (let t = fromTile + 1; t <= 100; t++) {
+      if (team.completed.has(t) || SNAKES[t]) {
+        skippedBlockedTiles.push(t);
+        continue;
+      }
+
+      foundTile = t;
+      break;
+    }
+
+    if (foundTile) {
+      nextTile = foundTile;
+      rolledLandingTile = foundTile;
+      skipped = true;
+      landedViaDirectRoll = false;
+
+      eventLines.push(
+        `⚠️ Skipped to tile ${nextTile} because tiles ${formatSkippedTilesWithSnakes(skippedBlockedTiles)} were already completed or snake heads.`
+      );
+    }
+  }
+
+  if (!skipped) {
+    // Overshoot bounce-back.
+    if (nextTile > 100) {
+      const overshoot = nextTile - 100;
+      nextTile = 100 - overshoot;
+      rolledLandingTile = nextTile;
+      bounced = true;
+      eventLines.push(`↩️ Overshot 100! Bounced back to tile ${nextTile}.`);
+    }
+
+    // Direct snake landing.
+    if (SNAKES[nextTile]) {
+      const snakeResult = simulateSnakeCascade(nextTile, team.completed);
+      nextTile = snakeResult.finalTile;
+      snaked = snakeResult.snakeCount > 0;
+      snakeCount += snakeResult.snakeCount;
+      landedViaDirectRoll = false;
+      eventLines.push(...snakeResult.eventLines);
+    } else {
+      // Completed-tile shift after normal landing.
+      const shift = simulateForwardShiftPastBlockedTiles(nextTile, team.completed, 100);
+
+      if (shift.skippedTiles.length > 0) {
+        nextTile = shift.finalTile;
+        landedViaDirectRoll = false;
+
+        eventLines.push(
+          `➡️ Moved forward to tile ${nextTile} because tiles ${formatSkippedTilesWithSnakes(shift.skippedTiles)} were already completed or snake heads.`
+        );
+
+        if (SNAKES[nextTile]) {
+          const snakeResult = simulateSnakeCascade(nextTile, team.completed);
+          nextTile = snakeResult.finalTile;
+          snaked = snakeResult.snakeCount > 0;
+          snakeCount += snakeResult.snakeCount;
+          eventLines.push(...snakeResult.eventLines);
+        }
+      }
+    }
+  }
+
+  // Rat trigger: only on direct dice landings, same general principle as your live game.
+  if (
+    nextTile !== 100 &&
+    landedViaDirectRoll &&
+    isSimulationRatTileActive(nextTile, triggeredRats)
+  ) {
+    ratTriggered = true;
+    triggeredRats.add(nextTile);
+
+    const ratResult = simulateRatTrigger(team, allTeams);
+    ratText = ratResult.message;
+
+    const victim = allTeams.find(t => Number(t.team_id) === Number(ratResult.victim_team_id));
+    if (victim) {
+      victim.rat_victim_count++;
+      victim.current_tile = ratResult.victim_to;
+
+      if (ratResult.victim_snaked) {
+        victim.snake_count += ratResult.victim_snake_count;
+      }
+
+      if (victim.current_tile >= 1 && victim.current_tile <= 100 && !victim.completed.has(victim.current_tile)) {
+        victim.completed.add(victim.current_tile);
+        victim.completed_count++;
+      }
+    }
+  }
+
+  return {
+    dice: dice,
+    from_tile: fromTile,
+    rolled_landing_tile: rolledLandingTile,
+    to_tile: nextTile,
+    event_text: eventLines.join("\n"),
+    rat_text: ratText,
+    skipped: skipped,
+    snaked: snaked,
+    snake_count: snakeCount,
+    bounced: bounced,
+    rat_triggered: ratTriggered
+  };
+}
+
+function simulateSnakeCascade(startTile, completed) {
+  let tile = startTile;
+  let safety = 0;
+  let snakeCount = 0;
+  const eventLines = [];
+
+  while (safety++ < 20 && SNAKES[tile]) {
+    const snakeOrigin = tile;
+    const snakeDest = SNAKES[tile];
+
+    snakeCount++;
+    eventLines.push(`🐍 Snake bite! ${snakeOrigin} → ${snakeDest}`);
+
+    const shift = simulateForwardShiftPastBlockedTiles(snakeDest, completed, 100);
+    tile = shift.finalTile;
+
+    if (shift.skippedTiles.length > 0) {
+      eventLines.push(
+        `➡️ Moved forward to tile ${tile} because tiles ${formatSkippedTilesWithSnakes(shift.skippedTiles)} were already completed or snake heads.`
+      );
+    }
+  }
+
+  return {
+    finalTile: tile,
+    snakeCount: snakeCount,
+    eventLines: eventLines
+  };
+}
+
+function simulateForwardShiftPastBlockedTiles(startTile, completed, maxTile) {
+  const skippedTiles = [];
+  let tile = startTile;
+
+  while (
+    tile < maxTile &&
+    (completed.has(tile) || SNAKES[tile])
+  ) {
+    skippedTiles.push(tile);
+    tile++;
+  }
+
+  return {
+    finalTile: tile,
+    skippedTiles: skippedTiles
+  };
+}
+
+function isSimulationRatTileActive(tile, triggeredRats) {
+  return RAT_TILES_LIST.includes(Number(tile)) && !triggeredRats.has(Number(tile));
+}
+
+function simulateRatTrigger(landerTeam, allTeams) {
+  const victimPick = simulatePickRatVictim(landerTeam, allTeams);
+  const victim = allTeams.find(t => Number(t.team_id) === Number(victimPick.victim_team_id));
+
+  if (!victim) {
+    return {
+      victim_team_id: landerTeam.team_id,
+      victim_from: landerTeam.current_tile,
+      victim_to: landerTeam.current_tile,
+      victim_snaked: false,
+      victim_snake_count: 0,
+      message: "🐀 Rat triggered, but no valid victim found."
+    };
+  }
+
+  const fromTile = Number(victim.current_tile);
+  const dieRoll = Math.floor(Math.random() * 6) + 1;
+  let newTile = Math.max(1, fromTile - dieRoll);
+
+  const eventLines = [];
+
+  const shift = simulateForwardShiftPastBlockedTiles(newTile, victim.completed, fromTile);
+
+  if (shift.skippedTiles.length > 0) {
+    newTile = shift.finalTile;
+    eventLines.push(
+      `➡️ Moved forward to tile ${newTile} because tiles ${formatSkippedTilesWithSnakes(shift.skippedTiles)} were already completed or snake heads.`
+    );
+  }
+
+  let victimSnaked = false;
+  let victimSnakeCount = 0;
+
+  if (SNAKES[newTile]) {
+    const snakeResult = simulateSnakeCascade(newTile, victim.completed);
+    newTile = snakeResult.finalTile;
+    victimSnaked = snakeResult.snakeCount > 0;
+    victimSnakeCount = snakeResult.snakeCount;
+    eventLines.push(...snakeResult.eventLines);
+  }
+
+  const message =
+    `🐀 ${landerTeam.team_name} triggered a rat. ` +
+    `${victim.team_name} rolled ${dieRoll} backwards: ${fromTile} → ${newTile}` +
+    (eventLines.length ? `\n${eventLines.join("\n")}` : "");
+
+  return {
+    victim_team_id: victim.team_id,
+    victim_from: fromTile,
+    victim_to: newTile,
+    victim_snaked: victimSnaked,
+    victim_snake_count: victimSnakeCount,
+    message: message
+  };
+}
+
+function simulatePickRatVictim(landerTeam, allTeams) {
+  if (Math.random() < RAT_SELF_PROBABILITY) {
+    return {
+      victim_team_id: landerTeam.team_id,
+      self_rat: true
+    };
+  }
+
+  const others = allTeams.filter(t =>
+    Number(t.team_id) !== Number(landerTeam.team_id) &&
+    Number(t.current_tile) >= 1 &&
+    !t.finished
+  );
+
+  if (others.length === 0) {
+    return {
+      victim_team_id: landerTeam.team_id,
+      self_rat: true
+    };
+  }
+
+  const weights = others.map(t => Number(t.current_tile) + 1);
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+
+  let pick = Math.random() * totalWeight;
+
+  for (let i = 0; i < others.length; i++) {
+    pick -= weights[i];
+
+    if (pick <= 0) {
+      return {
+        victim_team_id: others[i].team_id,
+        self_rat: false
+      };
+    }
+  }
+
+  return {
+    victim_team_id: others[others.length - 1].team_id,
+    self_rat: false
+  };
+}
+
+function writeSimulationOutput(teams, events, triggeredRats, roundsPlayed) {
+  const ss = getSpreadsheet();
+  const sheetName = "Simulation Output";
+
+  let sheet = ss.getSheetByName(sheetName);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+  }
+
+  sheet.clear();
+
+  sheet.getRange(1, 1).setValue("Full Game Simulation Output");
+  sheet.getRange(2, 1).setValue("Rounds played");
+  sheet.getRange(2, 2).setValue(roundsPlayed);
+
+  sheet.getRange(4, 1, 1, 10).setValues([[
+    "Team",
+    "Final Tile",
+    "Finished",
+    "Rolls",
+    "Completed Tiles",
+    "Rats Triggered",
+    "Ratted as Victim",
+    "Snake Bites",
+    "Skip Events",
+    "Bounce Events"
+  ]]);
+
+  const summaryRows = teams.map(t => [
+    t.team_name,
+    t.current_tile,
+    t.finished ? "YES" : "NO",
+    t.rolls,
+    t.completed_count,
+    t.rat_triggered_count,
+    t.rat_victim_count,
+    t.snake_count,
+    t.skip_count,
+    t.bounce_count
+  ]);
+
+  sheet.getRange(5, 1, summaryRows.length, 10).setValues(summaryRows);
+
+  sheet.getRange(11, 1).setValue("Triggered Rat Tiles");
+  sheet.getRange(11, 2).setValue(Array.from(triggeredRats).sort((a, b) => a - b).join(", "));
+
+  sheet.getRange(13, 1).setValue("Final Board Overview");
+
+  const boardRows = [];
+
+  for (let tile = 1; tile <= 100; tile++) {
+    const teamsHere = teams
+      .filter(t => Number(t.current_tile) === tile)
+      .map(t => t.team_name)
+      .join(", ");
+
+    const completedBy = teams
+      .filter(t => t.completed.has(tile))
+      .map(t => t.team_name)
+      .join(", ");
+
+    boardRows.push([
+      tile,
+      SNAKES[tile] ? `Snake → ${SNAKES[tile]}` : "",
+      RAT_TILES_LIST.includes(tile) ? "Rat" : "",
+      teamsHere,
+      completedBy
+    ]);
+  }
+
+  sheet.getRange(14, 1, 1, 5).setValues([[
+    "Tile",
+    "Snake",
+    "Rat",
+    "Team Currently Here",
+    "Completed By"
+  ]]);
+
+  sheet.getRange(15, 1, boardRows.length, 5).setValues(boardRows);
+
+  const eventStartRow = 117;
+  sheet.getRange(eventStartRow, 1).setValue("Event Log");
+
+  sheet.getRange(eventStartRow + 1, 1, 1, 9).setValues([[
+    "Round",
+    "Team ID",
+    "Team",
+    "Dice",
+    "From Tile",
+    "Rolled Landing Tile",
+    "Final Tile",
+    "Events",
+    "Rat Event"
+  ]]);
+
+  if (events.length > 0) {
+    sheet.getRange(eventStartRow + 2, 1, events.length, 9).setValues(events);
+  }
+
+  sheet.autoResizeColumns(1, 10);
+}
+
+function handleRerollGain(data) {
+  const lock = LockService.getScriptLock();
+  const hasLock = lock.tryLock(8000);
+
+  if (!hasLock) {
+    return jsonResponse({
+      success: false,
+      message: "⏳ Busy, try again."
+    });
+  }
+
+  try {
+    const channelId = data.channel_id;
+    if (!channelId) {
+      return jsonResponse({
+        success: false,
+        message: "No channel_id provided"
+      });
+    }
+
+    const team = getTeamByChannelId(channelId);
+
+    if (!team) {
+      return jsonResponse({
+        success: false,
+        message: "❌ Team not found."
+      });
+    }
+
+    // Winner lockout. Finished teams should not be able to farm or spend rerolls.
+    if (isWinner(team.team_id)) {
+      return jsonResponse({
+        success: false,
+        message: `🏆 ${team.team_name} has already won! No more reroll gains for you.`
+      });
+    }
+
+    const currentTile = Number(team.current_tile);
+
+    if (currentTile < 1 || currentTile > 99) {
+      return jsonResponse({
+        success: false,
+        message: `❌ ${team.team_name} is not on a tradeable tile (current: ${currentTile}).`
+      });
+    }
+
+    // Password check, same pattern as handleComplete
+    if (team.player_password_hash && team.player_password_hash !== "") {
+      if ((data.player_password_hash || "") !== team.player_password_hash) {
+        return jsonResponse({
+          success: false,
+          message: "❌ Incorrect team password."
+        });
+      }
+    }
+
+    // Prevent repeated pet-reroll farming on the same team/tile.
+    // This only blocks prior pet-mechanic gains; automatic tile>=40 rewards are unaffected.
+    const activitySheet = getSpreadsheet().getSheetByName(SHEET_ACTIVITY);
+    if (activitySheet && activitySheet.getLastRow() >= 2) {
+      const rows = activitySheet.getRange(2, 1, activitySheet.getLastRow() - 1, 10).getValues();
+
+      const alreadyUsedPetRerollHere = rows.some(r =>
+        Number(r[1]) === Number(team.team_id) &&
+        String(r[3]) === "REROLL_GAINED" &&
+        Number(r[4]) === currentTile &&
+        Number(r[5]) === currentTile &&
+        String(r[7] || "").includes("Pet mechanic")
+      );
+
+      if (alreadyUsedPetRerollHere) {
+        return jsonResponse({
+          success: false,
+          message: `⚠️ ${team.team_name} already used the pet reroll mechanic on tile ${currentTile}.`
+        });
+      }
+    }
+
+    const newAvailable = (team.rerolls_available || 0) + 1;
+
+    updateTeamField(team.team_id, "rerolls_available", newAvailable);
+
+    logActivity({
+      team_id: team.team_id,
+      team_name: team.team_name,
+      event_type: "REROLL_GAINED",
+      from_tile: currentTile,
+      to_tile: currentTile,
+      details: `Pet mechanic: gained 1 reroll instead of completing. New total: ${newAvailable}.`,
+      discord_user: data.username || ""
+    });
+
+    return jsonResponse({
+      success: true,
+      message: `🎲 ${team.team_name} traded their tile completion for a reroll! The tile is NOT marked complete. Rerolls available: ${newAvailable}.`,
+      result: {
+        team_id: team.team_id,
+        team_name: team.team_name,
+        tile: currentTile,
+        rerolls_available: newAvailable,
+        rerolls_used: team.rerolls_used || 0,
+        tile_was_completed: false
+      }
+    });
+
+  } catch (err) {
+    return jsonResponse({
+      success: false,
+      message: "Reroll gain failed: " + err.message
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
