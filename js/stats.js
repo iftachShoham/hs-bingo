@@ -26,7 +26,8 @@ function renderStats() {
 
 function _canvasSetup(canvas, h) {
   const dpr = window.devicePixelRatio || 1;
-  const W   = Math.floor(canvas.parentElement.getBoundingClientRect().width) || 0;
+  // Subtract 2 to account for 1px border on each side, preventing overflow
+  const W   = Math.max(0, Math.floor(canvas.parentElement.getBoundingClientRect().width) - 2);
   if (W < 20) return null; // canvas is hidden or not yet laid out
   canvas.width        = W * dpr;
   canvas.height       = h * dpr;

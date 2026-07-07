@@ -42,8 +42,12 @@ async function doRoll() {
           t => Number(t.team_id) === Number(state.team.team_id)
         );
         const webhookUrl = teamData?.webhook_url;
+        // Bug 4 fix: for self-rat the team was moved backward — show the image of where they ended up
+        const ratResult = result.result?.rat_result;
         if (webhookUrl) {
-          const tileContent = result.result?.tile_content;
+          const tileContent = (ratResult?.self_rat)
+            ? ratResult.victim_tile_content
+            : result.result?.tile_content;
           const imgPath = tileContent && state.tileImages
             ? state.tileImages.get(tileContent.toLowerCase().trim())
             : null;
@@ -56,6 +60,27 @@ async function doRoll() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           }).catch(() => {});
+        }
+
+        // Bug 1 fix: notify the victim team's Discord channel when ratted (non-self-rat)
+        if (ratResult && !ratResult.self_rat && ratResult.victim_notification?.message) {
+          const victimTeamData = state.boardData?.teams?.find(
+            t => Number(t.team_id) === Number(ratResult.victim_team_id)
+          );
+          const victimWebhookUrl = victimTeamData?.webhook_url;
+          if (victimWebhookUrl) {
+            const victimTileContent = ratResult.victim_tile_content;
+            const victimImgPath = victimTileContent && state.tileImages
+              ? state.tileImages.get(victimTileContent.toLowerCase().trim())
+              : null;
+            const victimPayload = { content: ratResult.victim_notification.message };
+            if (victimImgPath) victimPayload.embeds = [{ image: { url: new URL(victimImgPath, window.location.href).href } }];
+            fetch(victimWebhookUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(victimPayload)
+            }).catch(() => {});
+          }
         }
       }
 
