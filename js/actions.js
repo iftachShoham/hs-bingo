@@ -356,8 +356,8 @@ function clearProof() {
 
 async function doRerollGain() {
   const btn = document.getElementById("btn-complete");
-  setBusy(btn, true, "⏪ Gaining rollback…");
-  setCompleteResult("⏪ Converting tile to rollback…");
+  setBusy(btn, true, "⏪ Gaining reroll…");
+  setCompleteResult("⏪ Converting tile to reroll…");
   try {
     const result = await apiCommand("reroll_gain", { username: state.playerName || "" });
     setCompleteResult(result.message || JSON.stringify(result));
@@ -433,7 +433,7 @@ async function confirmReroll() {
   setBusy(btn, true, "⏪ Rolling back…");
   setRollResult("⏪ Using rollback…");
   try {
-    const result = await apiCommand("roll", { use_reroll: true });
+    const result = await apiCommand("roll", { use_reroll: true, source: "web-client" });
     setRollResult(result.message || JSON.stringify(result));
     addFeedEvent(result.success ? "ok" : "err", result.message || "Rollback done.");
     if (result.success) {
