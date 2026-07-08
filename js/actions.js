@@ -384,7 +384,8 @@ async function doRerollGain() {
   setBusy(btn, true, "⏪ Gaining reroll…");
   setCompleteResult("⏪ Converting tile to reroll…");
   try {
-    const result = await apiCommand("reroll_gain", { username: state.playerName || "" });
+    const extra = !state.isAdmin ? { source: "web-client" } : {};
+    const result = await apiCommand("reroll_gain", { username: state.playerName || "", ...extra });
     setCompleteResult(result.message || JSON.stringify(result));
     addFeedEvent(result.success ? "ok" : "err", result.message || "Rollback gained.");
     if (result.success) {

@@ -234,7 +234,19 @@ function renderBoard(data) {
       boardEl.appendChild(cell);
     });
   });
-  requestAnimationFrame(() => drawSnakes(snakes));
+  requestAnimationFrame(() => {
+    drawSnakes(snakes);
+    const cb = document.getElementById('snake-hide-check');
+    if (cb && cb.checked) {
+      const svg = document.getElementById('snake-svg');
+      if (svg) svg.classList.add('snakes-hidden');
+    }
+  });
+}
+
+function toggleSnakeVisibility(hide) {
+  const svg = document.getElementById('snake-svg');
+  if (svg) svg.classList.toggle('snakes-hidden', hide);
 }
 
 function getHotStreakTeamId() {
