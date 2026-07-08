@@ -13,7 +13,10 @@ const SHEET_TEAMS = "Teams";
 const SHEET_TILE_LIST = "Tile List";
 const SHEET_ACTIVITY = "Activity Log";
 
-const SNAKES = { 16: 6, 37: 23, 46: 26, 52: 31, 73: 53, 97: 78, 80: 61 };
+const SNAKES = { 16: 6, 33: 26, 53: 39, 71: 59, 78: 65, 96: 83 };
+
+const RAT_TILES_LIST = [7, 8, 12, 13, 22, 31, 44, 67, 72, 82, 95];
+
 
 // Team visuals (hardcoded per team_id)
 const TEAM_VISUALS = {
@@ -340,7 +343,6 @@ function clearTeamDisplayCell(teamId) {
 // RAT MECHANIC — hidden traps, victim selection, backwards roll
 // ============================================================
 
-const RAT_TILES_LIST = [7, 8, 9, 10, 11, 12, 13, 22, 31, 44, 55, 67, 71, 82, 89, 95];
 const RAT_SELF_PROBABILITY = 0.20;
 const TRIGGERED_RATS_KEY = "triggered_rats";
 
