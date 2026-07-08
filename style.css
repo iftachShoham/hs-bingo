@@ -578,6 +578,9 @@ body {
 .rat-swatch   { background: var(--tile-rat);   border-color: #6b4810; }
 .my-swatch    { background: var(--tile-my);    border-color: #1a68aa; }
 .done-swatch  { background: var(--tile-done-me); }
+.leg-toggle { cursor: pointer; user-select: none; gap: 5px; }
+.leg-toggle input { cursor: pointer; accent-color: var(--accent); margin: 0; }
+#snake-svg.snakes-hidden { display: none; }
 
 /* ── Side Panel — wood-grain texture, triple-line left border ── */
 #side-panel {
