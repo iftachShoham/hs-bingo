@@ -152,9 +152,8 @@ function enterGame() {
     nameBadge.style.borderColor = TEAM_COLORS[state.team.team_id] || "#555";
   }
 
-  const whoLabel = state.playerName
-    ? `${state.playerName} (${state.isAdmin ? "Game Master" : state.team.team_name})`
-    : (state.isAdmin ? "Game Master" : state.team.team_name);
+  const roleLabel = state.isAdmin ? "Game Master" : state.isSpectator ? "Spectator" : state.team.team_name;
+  const whoLabel = state.playerName ? `${state.playerName} (${roleLabel})` : roleLabel;
   addFeedEvent("sys", `Logged in as ${whoLabel}.`);
 
   // On mobile, update Play tab label for admin
