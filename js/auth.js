@@ -20,8 +20,22 @@ async function login() {
     if (code === CONFIG.ADMIN_CODE) {
       state.channelId  = code;
       state.isAdmin    = true;
+      state.isSpectator = false;
       state.team       = null;
       state.playerName = playerName || null;
+      localStorage.setItem("hs_cid", code);
+      if (playerName) localStorage.setItem("hs_player", playerName);
+      enterGame();
+      return;
+    }
+
+    // Spectator shortcut — read-only ghost mode, no server lookup needed
+    if (code === CONFIG.SPECTATOR_CODE) {
+      state.channelId   = code;
+      state.isSpectator = true;
+      state.isAdmin     = false;
+      state.team        = null;
+      state.playerName  = playerName || null;
       localStorage.setItem("hs_cid", code);
       if (playerName) localStorage.setItem("hs_player", playerName);
       enterGame();
@@ -99,7 +113,7 @@ function showLoginError(msg) {
 function logout() {
   clearInterval(state.pollTimer);
   clearInterval(state.activityPollTimer);
-  Object.assign(state, { channelId: null, team: null, isAdmin: false, boardData: null, pollTimer: null, playerName: null, proofFile: null, prevTaskContent: null, playerPasswordHash: null, activityLog: null, activityPollTimer: null });
+  Object.assign(state, { channelId: null, team: null, isAdmin: false, isSpectator: false, boardData: null, pollTimer: null, playerName: null, proofFile: null, prevTaskContent: null, playerPasswordHash: null, activityLog: null, activityPollTimer: null });
   localStorage.removeItem("hs_cid");
   localStorage.removeItem("hs_pwh");
   document.getElementById("game-screen").classList.add("hidden");
@@ -129,6 +143,9 @@ function enterGame() {
     document.getElementById("complete-section").classList.add("hidden");
     document.getElementById("task-section").classList.add("hidden");
     document.getElementById("admin-section").classList.remove("hidden");
+  } else if (state.isSpectator) {
+    nameBadge.textContent    = state.playerName ? `👁 ${state.playerName}` : "👁 Spectator";
+    nameBadge.style.borderColor = "#888";
   } else {
     const nameLabel = state.playerName ? ` · ${state.playerName}` : "";
     nameBadge.textContent    = `${getTeamBullet(state.team.team_id)} ${state.team.team_name}${nameLabel}`;
