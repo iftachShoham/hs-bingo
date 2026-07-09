@@ -11,6 +11,9 @@ const CONFIG = {
   // Whoever types this on the login screen gets Game Master controls
   ADMIN_CODE: "%%ADMIN_CODE%%",
 
+  // Whoever types this gets a read-only spectator view (ghost mode)
+  SPECTATOR_CODE: "%%SPECTATOR_CODE%%",
+
   // Free API key from https://api.imgbb.com — needed for image proof uploads
   IMGBB_KEY: "%%IMGBB_KEY%%",
 
@@ -29,9 +32,10 @@ function getTeamBullet(id) { return TEAM_BULLETS[Number(id)] || "⚪"; }
 
 // ── App state ──
 const state = {
-  channelId:          null,   // the logged-in team's channel_id (or ADMIN_CODE)
+  channelId:          null,   // the logged-in team's channel_id (or ADMIN_CODE / SPECTATOR_CODE)
   team:               null,   // { team_id, team_name, current_tile }
   isAdmin:            false,
+  isSpectator:        false,
   boardData:          null,
   pollTimer:          null,
   activeTab:          'board',

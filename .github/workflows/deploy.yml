@@ -23,6 +23,7 @@ jobs:
           sed -i "s|%%ADMIN_CODE%%|${{ secrets.ADMIN_CODE }}|g" js/config.js
           sed -i "s|%%IMGBB_KEY%%|${{ secrets.IMGBB_KEY }}|g" js/config.js
           sed -i "s|%%PROXY_URL%%|${{ secrets.PROXY_URL }}|g" js/config.js
+          sed -i "s|%%SPECTATOR_CODE%%|${{ secrets.SPECTATOR_CODE }}|g" js/config.js
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

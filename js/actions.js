@@ -3,6 +3,7 @@
 // ══════════════════════════════════════════════════════
 
 async function doRoll() {
+  if (state.isSpectator) { showSpectatorToast(); return; }
   // If reroll checkbox is ticked, show confirmation modal instead of rolling
   const rerollCheck = document.getElementById("reroll-check");
   if (rerollCheck && rerollCheck.checked) {
@@ -251,6 +252,7 @@ function dismissRatWheel() {
 }
 
 async function doComplete() {
+  if (state.isSpectator) { showSpectatorToast(); return; }
   // Pet mechanic: if "use as reroll" is ticked, gain a reroll instead of completing
   const petCheck = document.getElementById("pet-reroll-check");
   if (petCheck && petCheck.checked) {
@@ -454,6 +456,7 @@ function cancelReroll() {
 }
 
 async function confirmReroll() {
+  if (state.isSpectator) { showSpectatorToast(); return; }
   document.getElementById("reroll-modal").classList.add("hidden");
   const btn = document.getElementById("btn-roll");
   setBusy(btn, true, "⏪ Rolling back…");

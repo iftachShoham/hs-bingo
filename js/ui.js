@@ -46,6 +46,19 @@ function addFeedEvent(type, message) {
 
 function clearFeed() { document.getElementById("feed-items").innerHTML = ""; }
 
+function showSpectatorToast() {
+  let toast = document.getElementById("spectator-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "spectator-toast";
+    toast.textContent = "👁 Spectator mode — watch only";
+    document.body.appendChild(toast);
+  }
+  toast.classList.remove("spectator-toast-show");
+  void toast.offsetWidth;
+  toast.classList.add("spectator-toast-show");
+}
+
 // ══════════════════════════════════════════════════════
 //  MOBILE — tab navigation & tile modal
 // ══════════════════════════════════════════════════════

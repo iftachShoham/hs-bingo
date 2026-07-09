@@ -2085,6 +2085,33 @@ body {
   font-weight: 600;
 }
 
+/* ── Spectator ghost-mode toast ── */
+#spectator-toast {
+  position: fixed;
+  top: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 20, 35, 0.96);
+  border: 1px solid #888;
+  color: #ccc;
+  padding: 9px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#spectator-toast.spectator-toast-show {
+  animation: spectator-fade 2.2s ease forwards;
+}
+@keyframes spectator-fade {
+  0%   { opacity: 1; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* Guide modal overlay */
 #guide-modal {
   display: flex;
