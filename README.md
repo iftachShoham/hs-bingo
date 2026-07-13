@@ -5,6 +5,7 @@ A live multiplayer board-game web portal for the **High Society** OSRS clan's *S
 ## Contributers:
 1. SoftPapi
 2. Toxic
+3. 
 ---
 
 ## Table of Contents
