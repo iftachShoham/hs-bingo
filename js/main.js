@@ -60,12 +60,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Auto-login from localStorage
+  // Auto-login from localStorage (spectators are never persisted)
   const saved    = localStorage.getItem("hs_cid");
   const savedPwh = localStorage.getItem("hs_pwh");
-  if (saved) {
+  if (saved && saved !== CONFIG.SPECTATOR_CODE) {
     document.getElementById("team-code-input").value = saved;
     if (savedPwh) state.playerPasswordHash = savedPwh;
     login();
+  } else if (saved === CONFIG.SPECTATOR_CODE) {
+    localStorage.removeItem("hs_cid");
   }
 });

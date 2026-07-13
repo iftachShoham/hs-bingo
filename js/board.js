@@ -9,6 +9,11 @@ async function refreshBoard() {
     return;
   }
 
+  if (state.isSpectator && state.channelId !== CONFIG.SPECTATOR_CODE) {
+    logout();
+    return;
+  }
+
   try {
     const data = await apiFetchBoardState();
 

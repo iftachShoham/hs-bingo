@@ -36,7 +36,7 @@ async function login() {
       state.isAdmin     = false;
       state.team        = null;
       state.playerName  = playerName || null;
-      localStorage.setItem("hs_cid", code);
+      // Not persisted to localStorage — spectators must re-enter each session
       if (playerName) localStorage.setItem("hs_player", playerName);
       enterGame();
       return;
