@@ -12,7 +12,7 @@ const CONFIG = {
   ADMIN_CODE: "softpapihasbigpipiwhennotsoft",
 
   // Whoever types this gets a read-only spectator view (ghost mode)
-  SPECTATOR_CODE: "nowayyou'renotdoingbingo",
+  SPECTATOR_CODE: "test",
 
   // Free API key from https://api.imgbb.com — needed for image proof uploads
   IMGBB_KEY: "10ab068f4a22b9c256c83eeddfcbfd75",
