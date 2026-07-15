@@ -14,9 +14,9 @@ async function loadTileImages() {
     }
     const data = await res.json();
     const map  = new Map();
-    for (const entry of Object.values(data)) {
-      if (entry.name && entry.image) {
-        map.set(entry.name.toLowerCase().trim(), entry.image);
+    for (const [name, image] of Object.entries(data)) {
+      if (name && image) {
+        map.set(name.toLowerCase().trim(), image);
       }
     }
     state.tileImages = map;

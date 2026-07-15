@@ -38,7 +38,7 @@ foreach ($orig in $fileHashMap.Keys) {
     }
 }
 
-# Write obfuscated JSON
+# Write obfuscated JSON — format: { "tile name": "images/hashedfile" }
 $lines = @('{')
 $keys  = $data.PSObject.Properties.Name
 for ($i = 0; $i -lt $keys.Count; $i++) {
@@ -46,18 +46,16 @@ for ($i = 0; $i -lt $keys.Count; $i++) {
     $entry = $data.$k
     $comma = if ($i -lt $keys.Count - 1) { ',' } else { '' }
 
-    $b64name = [System.Convert]::ToBase64String(
-        [System.Text.Encoding]::UTF8.GetBytes($entry.name)
-    )
+    $escapedName = $entry.name -replace '"', '\"'
 
     if ($entry.image) {
-        $filename   = [System.IO.Path]::GetFileName($entry.image)
-        $imageValue = '"images/' + $fileHashMap[$filename] + '"'
+        $filename    = [System.IO.Path]::GetFileName($entry.image)
+        $imageValue  = '"images/' + $fileHashMap[$filename] + '"'
     } else {
-        $imageValue = 'null'
+        $imageValue  = 'null'
     }
 
-    $lines += ('  "{0}": {{ "name": "{1}", "image": {2} }}{3}' -f $k, $b64name, $imageValue, $comma)
+    $lines += ('  "{0}": {1}{2}' -f $escapedName, $imageValue, $comma)
 }
 $lines += '}'
 
