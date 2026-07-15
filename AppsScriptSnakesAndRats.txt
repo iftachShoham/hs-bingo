@@ -15,7 +15,7 @@ const SHEET_ACTIVITY = "Activity Log";
 
 const SNAKES = { 16: 6, 33: 26, 53: 39, 71: 59, 78: 65, 96: 83 };
 
-const RAT_TILES_LIST = [7, 8, 12, 13, 22, 31, 44, 67, 72, 82, 95];
+const RAT_TILES_LIST = [7, 8, 12, 13, 22, 31, 44, 67, 71, 82, 95];
 
 
 // Team visuals (hardcoded per team_id)
