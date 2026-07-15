@@ -516,8 +516,8 @@ function renderTaskBox(data) {
 
   // Play ACB jingle when landing on the ACB tile for the first time this session
   if (state.prevTaskContent !== null &&
-      content.toLowerCase().trim() === 'acb' &&
-      state.prevTaskContent.toLowerCase().trim() !== 'acb') {
+      content.toLowerCase().trim() === 'armadyl crossbow' &&
+      state.prevTaskContent.toLowerCase().trim() !== 'armadyl crossbow') {
     playSound('assets/audio/old-armadyl-eye-spec-made-with-Voicemod.mp3');
   }
   state.prevTaskContent = content;
