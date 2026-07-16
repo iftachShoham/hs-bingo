@@ -307,6 +307,20 @@ function resumeGuide() {
   document.getElementById('guide-modal').classList.remove('hidden');
 }
 
+// ── Q&A Tile modal ──
+
+function openQaTile() {
+  document.getElementById('qa-tile-modal').classList.remove('hidden');
+}
+
+function closeQaTile() {
+  document.getElementById('qa-tile-modal').classList.add('hidden');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeQaTile();
+});
+
 // ── Scroll-sync nav active state in quick reference ──
 
 document.addEventListener('DOMContentLoaded', () => {

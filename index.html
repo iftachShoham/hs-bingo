@@ -74,6 +74,7 @@
         <span id="header-team-badge" class="badge"></span>
         <span id="header-tile-badge" class="badge badge-tile"></span>
         <span id="poll-dot" title="Live updates active">●</span>
+        <button id="qa-tile-btn" onclick="openQaTile()" title="Q&A Tile — what counts per tile type">📋 Q&amp;A Tile</button>
         <button id="guide-btn" onclick="openGuide()" title="How to Play">📖 Guide</button>
         <button class="btn-ghost" id="logout-btn">Logout</button>
       </div>
@@ -610,6 +611,85 @@
       </div><!-- /guide-body -->
     </div><!-- /guide-card -->
   </div><!-- /guide-modal -->
+
+  <!-- ── Q&A Tile Modal ── -->
+  <div id="qa-tile-modal" class="hidden" onclick="closeQaTile()">
+    <div id="qa-tile-card" onclick="event.stopPropagation()">
+      <button class="tile-modal-close" onclick="closeQaTile()">✕</button>
+      <div id="qa-tile-header">
+        <div id="qa-tile-title">📋 Q&amp;A Tile — Qualifying Drops</div>
+        <div id="qa-tile-subtitle">What counts per tile type</div>
+      </div>
+      <div id="qa-tile-body">
+
+        <div class="qa-category">
+          <div class="qa-category-header qa-slayer">⚔️ Slayer Drop</div>
+          <ul class="qa-drop-list">
+            <li>Abyssal whip</li>
+            <li>Abyssal dagger</li>
+            <li>Abyssal bludgeon spine</li>
+            <li>Abyssal bludgeon claw</li>
+            <li>Abyssal bludgeon axon</li>
+            <li>Basilisk jaw</li>
+            <li>Drake's claw</li>
+            <li>Drake's tooth</li>
+            <li>Eternal crystal</li>
+            <li>Eternal gem</li>
+            <li>Granite hammer</li>
+            <li>Granite ring</li>
+            <li>Hydra's claw</li>
+            <li>Hydra leather</li>
+            <li>Hydra's eye</li>
+            <li>Hydra's fang</li>
+            <li>Hydra's heart</li>
+            <li>Hydra tail</li>
+            <li>Imbued heart</li>
+            <li>Kraken tentacle</li>
+            <li>Pegasian crystal</li>
+            <li>Primordial crystal</li>
+            <li>Smouldering stone</li>
+            <li>Trident of the seas</li>
+            <li>Black tourmaline core</li>
+            <li>Wyvern visage</li>
+          </ul>
+        </div>
+
+        <div class="qa-category">
+          <div class="qa-category-header qa-low">🟣 Low Tier Purples</div>
+          <ul class="qa-drop-list">
+            <li>Arcane prayer scroll</li>
+            <li>Dexterous prayer scroll</li>
+            <li>Dinh's bulwark</li>
+            <li>Twisted buckler</li>
+            <li>Avernic defender hilt</li>
+            <li>Justiciar faceguard</li>
+            <li>Justiciar chestguard</li>
+            <li>Justiciar legguards</li>
+            <li>Lightbearer</li>
+            <li>Elidinis' ward</li>
+            <li>Ancestral hat</li>
+            <li>Masori mask</li>
+          </ul>
+        </div>
+
+        <div class="qa-category">
+          <div class="qa-category-header qa-mid">💜 Mid Tier Purples</div>
+          <ul class="qa-drop-list">
+            <li>Dragon hunter crossbow</li>
+            <li>Dragon claws</li>
+            <li>Ancestral robe bottom</li>
+            <li>Ancestral robe top</li>
+            <li>Osmumten's fang</li>
+            <li>Masori chaps</li>
+            <li>Masori body</li>
+            <li>Ghrazi rapier</li>
+            <li>Sanguinesti staff</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   <!-- Spotlight helpers -->
   <div id="guide-spotlight-ring"></div>
