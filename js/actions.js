@@ -414,10 +414,11 @@ async function doRerollGain() {
         const webhookUrl = teamData?.webhook_url;
         if (webhookUrl) {
           const credit = state.playerName ? ` *(${state.playerName} via web)*` : " *(via web)*";
+          const discordContent = (result.message || "") + credit + (finalUrl ? `\n${finalUrl}` : "");
           fetch(webhookUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: (result.message || "") + credit })
+            body: JSON.stringify({ content: discordContent })
           }).catch(() => {});
         }
       }
