@@ -61,9 +61,7 @@ async function login() {
         const passwordValue = passwordInput ? passwordInput.value : "";
 
         if (!passwordValue) {
-          if (passwordInput) { passwordInput.style.display = ""; passwordInput.focus(); }
-          const hint = document.getElementById("password-hint");
-          if (hint) hint.classList.remove("hidden");
+          if (passwordInput) passwordInput.focus();
           showLoginError("This team requires a password. Enter it and try again.");
           return;
         }
