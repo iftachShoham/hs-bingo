@@ -2864,7 +2864,8 @@ function handleRerollGain(data) {
       from_tile: currentTile,
       to_tile: currentTile,
       details: `Pet mechanic: gained 1 reroll instead of completing. New total: ${newAvailable}.`,
-      discord_user: data.username || ""
+      discord_user: data.username || "",
+      proof_url: data.proof_url || ""
     });
 
     return jsonResponse({
