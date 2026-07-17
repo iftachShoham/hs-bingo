@@ -382,15 +382,31 @@ function clearProof() {
 // ── Reroll: pet mechanic — gain a reroll instead of completing the tile ──
 
 async function doRerollGain() {
+  const proofUrl = document.getElementById("proof-url").value.trim();
+  const hasFile  = !!state.proofFile;
+
+  if (!hasFile && !proofUrl) {
+    setCompleteResult("❌ Add a photo or paste a proof URL first.");
+    return;
+  }
+
   const btn = document.getElementById("btn-complete");
   setBusy(btn, true, "⏪ Gaining reroll…");
   setCompleteResult("⏪ Converting tile to reroll…");
   try {
+    let finalUrl = proofUrl;
+    if (hasFile) {
+      setCompleteResult("📤 Uploading image…");
+      finalUrl = await uploadProofImage(state.proofFile);
+    }
+
     const extra = !state.isAdmin ? { source: "web-client" } : {};
-    const result = await apiCommand("reroll_gain", { username: state.playerName || "", ...extra });
+    const result = await apiCommand("reroll_gain", { username: state.playerName || "", proof_url: finalUrl, ...extra });
     setCompleteResult(result.message || JSON.stringify(result));
     addFeedEvent(result.success ? "ok" : "err", result.message || "Rollback gained.");
     if (result.success) {
+      clearProof();
+      document.getElementById("proof-url").value = "";
       if (!state.isAdmin && state.team) {
         const teamData = state.boardData?.teams?.find(
           t => Number(t.team_id) === Number(state.team.team_id)
