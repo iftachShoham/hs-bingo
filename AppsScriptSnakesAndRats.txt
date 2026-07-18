@@ -15,9 +15,6 @@ const SHEET_ACTIVITY = "Activity Log";
 
 const SNAKES = { 16: 6, 33: 26, 53: 39, 71: 59, 78: 65, 96: 83 };
 
-const RAT_TILES_LIST = [7, 8, 12, 13, 22, 31, 44, 67, 71, 82, 95];
-
-
 // Team visuals (hardcoded per team_id)
 const TEAM_VISUALS = {
   1: { color: "#9B59B6", bullet: "🟣" },
@@ -152,13 +149,38 @@ function getCompletedTilesForTeam(teamId) {
   const sheet = getSpreadsheet().getSheetByName(SHEET_ACTIVITY);
   if (!sheet || sheet.getLastRow() < 2) return new Set();
   const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
-  const completed = new Set();
+
+  // Read tile amounts so partial multi-completion progress doesn't count as done
+  const tileListSheet = getSpreadsheet().getSheetByName(SHEET_TILE_LIST);
+  const tileAmounts = {};
+  if (tileListSheet && tileListSheet.getLastRow() >= 2) {
+    tileListSheet.getRange(2, 1, tileListSheet.getLastRow() - 1, 3).getValues().forEach(row => {
+      if (row[0] !== "" && !isNaN(row[0])) {
+        const amt = Number(row[2]);
+        tileAmounts[Number(row[0])] = (amt >= 1) ? amt : 1;
+      }
+    });
+  }
+
+  const countsByTile = {};
+  const earlyCompleted = new Set();
   data.forEach(r => {
-    // Feature 3: also recognise EARLY_COMPLETE so early-completed tiles count as done
-    if (Number(r[1]) === Number(teamId) && (r[3] === "COMPLETE" || r[3] === "EARLY_COMPLETE")) {
+    if (Number(r[1]) === Number(teamId)) {
       const tile = Number(r[5]);
-      if (tile >= 1 && tile <= 100) completed.add(tile);
+      if (tile >= 1 && tile <= 100) {
+        if (r[3] === "EARLY_COMPLETE") {
+          earlyCompleted.add(tile);
+        } else if (r[3] === "COMPLETE") {
+          countsByTile[tile] = (countsByTile[tile] || 0) + 1;
+        }
+      }
     }
+  });
+
+  const completed = new Set(earlyCompleted);
+  Object.keys(countsByTile).forEach(tileStr => {
+    const tile = Number(tileStr);
+    if (countsByTile[tile] >= (tileAmounts[tile] || 1)) completed.add(tile);
   });
   return completed;
 }
@@ -343,6 +365,7 @@ function clearTeamDisplayCell(teamId) {
 // RAT MECHANIC — hidden traps, victim selection, backwards roll
 // ============================================================
 
+const RAT_TILES_LIST = [7, 8, 12, 13, 22, 31, 44, 67, 71, 82, 95];
 const RAT_SELF_PROBABILITY = 0.20;
 const TRIGGERED_RATS_KEY = "triggered_rats";
 
@@ -965,10 +988,10 @@ function completeTileForTeam(teamId, discordUser, proofUrl, earlyCompletion) {
       event_type: "REROLL_GAINED",
       from_tile: currentTile,
       to_tile: currentTile,
-      details: `Auto-gained 1 reroll for completing tile ${currentTile} (>=40). New total: ${newAvailable}.`
+      details: `Auto-gained 1 rollback for completing tile ${currentTile} (>=40). New total: ${newAvailable}.`
     });
 
-    result.message = `🎲 Bonus: earned 1 reroll for completing a tile >=40! (${newAvailable} available)`;
+    result.message = `🎲 Bonus: earned 1 rollback for completing a tile >=40! (${newAvailable} available)`;
     result.reroll_gained = true;
     result.rerolls_available = newAvailable;
   }
@@ -1195,13 +1218,22 @@ function handleRoll(data) {
       });
     }
 
-    // Feature 1: server-side password validation
-    if (team.player_password_hash && team.player_password_hash !== "") {
-      const clientHash = data.player_password_hash || "";
-      if (clientHash !== team.player_password_hash) {
-        return jsonResponse({ success: false, message: "❌ Incorrect team password." });
-      }
-    }
+    // Portal requests require the team password.
+// Discord requests are authenticated by the Worker and channel mapping.
+if (
+  !isDiscordRequest(data) &&
+  team.player_password_hash &&
+  team.player_password_hash !== ""
+) {
+  const clientHash = data.player_password_hash || "";
+
+  if (clientHash !== team.player_password_hash) {
+    return jsonResponse({
+      success: false,
+      message: "❌ Incorrect team password."
+    });
+  }
+}
 
     // Reroll path: spend a reroll instead of doing a normal forward roll
     if (data.use_reroll === true) {
@@ -1276,7 +1308,7 @@ function handleRerollSpend(team, data) {
   if (isWinner(team.team_id)) {
     return jsonResponse({
       success: false,
-      message: `🏆 ${team.team_name} has already won! No more rolls or rerolls for you.`
+      message: `🏆 ${team.team_name} has already won! No more rolls or rollbacks for you.`
     });
   }
 
@@ -1284,7 +1316,7 @@ function handleRerollSpend(team, data) {
   if ((team.rerolls_available || 0) < 1) {
     return jsonResponse({
       success: false,
-      message: "❌ No rerolls available."
+      message: "❌ No rollbacks available."
     });
   }
 
@@ -1413,13 +1445,22 @@ function handleComplete(data) {
       });
     }
 
-    // Feature 1: server-side password validation
-    if (team.player_password_hash && team.player_password_hash !== "") {
-      const clientHash = data.player_password_hash || "";
-      if (clientHash !== team.player_password_hash) {
-        return jsonResponse({ success: false, message: "❌ Incorrect team password." });
-      }
-    }
+    // Portal requests require the team password.
+// Discord requests are authenticated by the Worker and channel mapping.
+if (
+  !isDiscordRequest(data) &&
+  team.player_password_hash &&
+  team.player_password_hash !== ""
+) {
+  const clientHash = data.player_password_hash || "";
+
+  if (clientHash !== team.player_password_hash) {
+    return jsonResponse({
+      success: false,
+      message: "❌ Incorrect team password."
+    });
+  }
+}
 
     const discordUserId = data.user_id || "";
     const username = data.username || "someone";
@@ -1797,39 +1838,6 @@ function waitForBoardRender(ms) {
   Utilities.sleep(ms || 1000);
   SpreadsheetApp.flush();
 }
-function testTeam2Webhook() {
-  sendToTeam(2, "🐀 Test message to Team 2 webhook");
-}
-function debugTriggeredRats() {
-  const props = PropertiesService.getScriptProperties();
-  Logger.log("Triggered rats: " + (props.getProperty(TRIGGERED_RATS_KEY) || "none"));
-  Logger.log("Active rats: " + Array.from(getActiveRatTiles()).join(","));
-}
-function testRatBackwardsCompletedTile() {
-  const teamId = 2;
-
-  // Zet Team 2 op tile 10
-  updateTeamField(teamId, "current_tile", 10);
-
-  // Voeg fake completed tiles toe voor Team 2 op tile 7, 8 en 9
-  [7, 8, 9].forEach(tile => {
-    logActivity({
-      team_id: teamId,
-      team_name: "Team 2",
-      event_type: "COMPLETE",
-      from_tile: tile,
-      to_tile: tile,
-      details: `TEST completed tile ${tile}`
-    });
-  });
-
-  // Forceer handmatig de test door rollBackwardsForTeam te draaien
-  const result = rollBackwardsForTeam(teamId);
-
-  Logger.log(JSON.stringify(result, null, 2));
-
-  renderTeamsOnBoard();
-}
 
 function getCompletedTeamsByTile() {
   const sheet = getSpreadsheet().getSheetByName(SHEET_ACTIVITY);
@@ -1839,21 +1847,47 @@ function getCompletedTeamsByTile() {
     return completedByTile;
   }
 
+  // Read tile amounts so partial multi-completion progress doesn't count as done
+  const tileListSheet = getSpreadsheet().getSheetByName(SHEET_TILE_LIST);
+  const tileAmounts = {};
+  if (tileListSheet && tileListSheet.getLastRow() >= 2) {
+    tileListSheet.getRange(2, 1, tileListSheet.getLastRow() - 1, 3).getValues().forEach(row => {
+      if (row[0] !== "" && !isNaN(row[0])) {
+        const amt = Number(row[2]);
+        tileAmounts[Number(row[0])] = (amt >= 1) ? amt : 1;
+      }
+    });
+  }
+
   const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
 
+  // Count COMPLETE events per team per tile; EARLY_COMPLETE always counts as full
+  const counts = {};
   data.forEach(row => {
     const teamId = Number(row[1]);
     const eventType = row[3];
     const tile = Number(row[5]);
+    if (tile < 1 || tile > 100) return;
 
-    // Feature 3: also count EARLY_COMPLETE rows as a full completion
-    if ((eventType === "COMPLETE" || eventType === "EARLY_COMPLETE") && tile >= 1 && tile <= 100) {
-      if (!completedByTile[tile]) {
-        completedByTile[tile] = new Set();
-      }
-
+    if (eventType === "EARLY_COMPLETE") {
+      if (!completedByTile[tile]) completedByTile[tile] = new Set();
       completedByTile[tile].add(teamId);
+    } else if (eventType === "COMPLETE") {
+      if (!counts[tile]) counts[tile] = {};
+      counts[tile][teamId] = (counts[tile][teamId] || 0) + 1;
     }
+  });
+
+  // Only mark a tile done for a team when their count meets the required amount
+  Object.keys(counts).forEach(tileStr => {
+    const tile = Number(tileStr);
+    const required = tileAmounts[tile] || 1;
+    Object.keys(counts[tile]).forEach(teamIdStr => {
+      if (counts[tile][teamIdStr] >= required) {
+        if (!completedByTile[tile]) completedByTile[tile] = new Set();
+        completedByTile[tile].add(Number(teamIdStr));
+      }
+    });
   });
 
   return completedByTile;
@@ -2183,6 +2217,7 @@ function handleBoardData() {
     triggeredRats: triggeredRats
   })).setMimeType(ContentService.MimeType.JSON);
 }
+
 function listImages() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   const images = sheet.getImages();
@@ -2197,6 +2232,7 @@ function listImages() {
     }
   });
 }
+
 function handleRender() {
   try {
     renderTeamsOnBoard();
@@ -2304,477 +2340,6 @@ SpreadsheetApp.flush();
   }
 }
 
-// ============================================================
-// FULL GAME SIMULATION TEST — does not mutate live game state
-// ============================================================
-
-function runFullGameSimulation() {
-  const MAX_ROUNDS = 1000;
-  const TEAM_IDS = [1, 2, 3, 4];
-
-  const realTeams = getAllTeams();
-  const teamNamesById = {};
-
-  realTeams.forEach(t => {
-    teamNamesById[Number(t.team_id)] = t.team_name;
-  });
-
-  const teams = TEAM_IDS.map(teamId => ({
-    team_id: teamId,
-    team_name: teamNamesById[teamId] || `Team ${teamId}`,
-    current_tile: 0,
-    completed: new Set(),
-    finished: false,
-    rolls: 0,
-    completed_count: 0,
-    snake_count: 0,
-    rat_triggered_count: 0,
-    rat_victim_count: 0,
-    skip_count: 0,
-    bounce_count: 0
-  }));
-
-  const triggeredRats = new Set();
-  const events = [];
-
-  let round = 0;
-
-  while (round < MAX_ROUNDS && teams.some(t => !t.finished)) {
-    round++;
-
-    for (const team of teams) {
-      if (team.finished) continue;
-
-      const result = simulateRollForTeam(team, teams, triggeredRats);
-
-      team.rolls++;
-      team.current_tile = result.to_tile;
-
-      if (result.snaked) team.snake_count += result.snake_count || 1;
-      if (result.skipped) team.skip_count++;
-      if (result.bounced) team.bounce_count++;
-      if (result.rat_triggered) team.rat_triggered_count++;
-
-      // Auto-complete the final landing tile for simulation purposes.
-      if (team.current_tile >= 1 && team.current_tile <= 100 && !team.completed.has(team.current_tile)) {
-        team.completed.add(team.current_tile);
-        team.completed_count++;
-      }
-
-      if (team.current_tile === 100) {
-        team.finished = true;
-      }
-
-      events.push([
-        round,
-        team.team_id,
-        team.team_name,
-        result.dice,
-        result.from_tile,
-        result.rolled_landing_tile,
-        result.to_tile,
-        result.event_text,
-        result.rat_text || ""
-      ]);
-    }
-  }
-
-  writeSimulationOutput(teams, events, triggeredRats, round);
-}
-
-function simulateRollForTeam(team, allTeams, triggeredRats) {
-  const fromTile = Number(team.current_tile);
-  const dice = Math.floor(Math.random() * 6) + 1;
-
-  let nextTile = fromTile + dice;
-  let rolledLandingTile = nextTile;
-
-  const eventLines = [];
-  let landedViaDirectRoll = true;
-  let skipped = false;
-  let snaked = false;
-  let snakeCount = 0;
-  let bounced = false;
-  let ratTriggered = false;
-  let ratText = "";
-
-  // Skip logic: if the next 6 tiles are all blocked by completed tiles or snake heads,
-  // skip forward to the first non-blocked tile.
-  let allNext6Blocked = true;
-
-  for (let i = 1; i <= 6; i++) {
-    const t = fromTile + i;
-
-    if (t > 100 || (!team.completed.has(t) && !SNAKES[t])) {
-      allNext6Blocked = false;
-      break;
-    }
-  }
-
-  if (allNext6Blocked) {
-    const skippedBlockedTiles = [];
-    let foundTile = null;
-
-    for (let t = fromTile + 1; t <= 100; t++) {
-      if (team.completed.has(t) || SNAKES[t]) {
-        skippedBlockedTiles.push(t);
-        continue;
-      }
-
-      foundTile = t;
-      break;
-    }
-
-    if (foundTile) {
-      nextTile = foundTile;
-      rolledLandingTile = foundTile;
-      skipped = true;
-      landedViaDirectRoll = false;
-
-      eventLines.push(
-        `⚠️ Skipped to tile ${nextTile} because tiles ${formatSkippedTilesWithSnakes(skippedBlockedTiles)} were already completed or snake heads.`
-      );
-    }
-  }
-
-  if (!skipped) {
-    // Overshoot bounce-back.
-    if (nextTile > 100) {
-      const overshoot = nextTile - 100;
-      nextTile = 100 - overshoot;
-      rolledLandingTile = nextTile;
-      bounced = true;
-      eventLines.push(`↩️ Overshot 100! Bounced back to tile ${nextTile}.`);
-    }
-
-    // Direct snake landing.
-    if (SNAKES[nextTile]) {
-      const snakeResult = simulateSnakeCascade(nextTile, team.completed);
-      nextTile = snakeResult.finalTile;
-      snaked = snakeResult.snakeCount > 0;
-      snakeCount += snakeResult.snakeCount;
-      landedViaDirectRoll = false;
-      eventLines.push(...snakeResult.eventLines);
-    } else {
-      // Completed-tile shift after normal landing.
-      const shift = simulateForwardShiftPastBlockedTiles(nextTile, team.completed, 100);
-
-      if (shift.skippedTiles.length > 0) {
-        nextTile = shift.finalTile;
-        landedViaDirectRoll = false;
-
-        eventLines.push(
-          `➡️ Moved forward to tile ${nextTile} because tiles ${formatSkippedTilesWithSnakes(shift.skippedTiles)} were already completed or snake heads.`
-        );
-
-        if (SNAKES[nextTile]) {
-          const snakeResult = simulateSnakeCascade(nextTile, team.completed);
-          nextTile = snakeResult.finalTile;
-          snaked = snakeResult.snakeCount > 0;
-          snakeCount += snakeResult.snakeCount;
-          eventLines.push(...snakeResult.eventLines);
-        }
-      }
-    }
-  }
-
-  // Rat trigger: only on direct dice landings, same general principle as your live game.
-  if (
-    nextTile !== 100 &&
-    landedViaDirectRoll &&
-    isSimulationRatTileActive(nextTile, triggeredRats)
-  ) {
-    ratTriggered = true;
-    triggeredRats.add(nextTile);
-
-    const ratResult = simulateRatTrigger(team, allTeams);
-    ratText = ratResult.message;
-
-    const victim = allTeams.find(t => Number(t.team_id) === Number(ratResult.victim_team_id));
-    if (victim) {
-      victim.rat_victim_count++;
-      victim.current_tile = ratResult.victim_to;
-
-      if (ratResult.victim_snaked) {
-        victim.snake_count += ratResult.victim_snake_count;
-      }
-
-      if (victim.current_tile >= 1 && victim.current_tile <= 100 && !victim.completed.has(victim.current_tile)) {
-        victim.completed.add(victim.current_tile);
-        victim.completed_count++;
-      }
-    }
-  }
-
-  return {
-    dice: dice,
-    from_tile: fromTile,
-    rolled_landing_tile: rolledLandingTile,
-    to_tile: nextTile,
-    event_text: eventLines.join("\n"),
-    rat_text: ratText,
-    skipped: skipped,
-    snaked: snaked,
-    snake_count: snakeCount,
-    bounced: bounced,
-    rat_triggered: ratTriggered
-  };
-}
-
-function simulateSnakeCascade(startTile, completed) {
-  let tile = startTile;
-  let safety = 0;
-  let snakeCount = 0;
-  const eventLines = [];
-
-  while (safety++ < 20 && SNAKES[tile]) {
-    const snakeOrigin = tile;
-    const snakeDest = SNAKES[tile];
-
-    snakeCount++;
-    eventLines.push(`🐍 Snake bite! ${snakeOrigin} → ${snakeDest}`);
-
-    const shift = simulateForwardShiftPastBlockedTiles(snakeDest, completed, 100);
-    tile = shift.finalTile;
-
-    if (shift.skippedTiles.length > 0) {
-      eventLines.push(
-        `➡️ Moved forward to tile ${tile} because tiles ${formatSkippedTilesWithSnakes(shift.skippedTiles)} were already completed or snake heads.`
-      );
-    }
-  }
-
-  return {
-    finalTile: tile,
-    snakeCount: snakeCount,
-    eventLines: eventLines
-  };
-}
-
-function simulateForwardShiftPastBlockedTiles(startTile, completed, maxTile) {
-  const skippedTiles = [];
-  let tile = startTile;
-
-  while (
-    tile < maxTile &&
-    (completed.has(tile) || SNAKES[tile])
-  ) {
-    skippedTiles.push(tile);
-    tile++;
-  }
-
-  return {
-    finalTile: tile,
-    skippedTiles: skippedTiles
-  };
-}
-
-function isSimulationRatTileActive(tile, triggeredRats) {
-  return RAT_TILES_LIST.includes(Number(tile)) && !triggeredRats.has(Number(tile));
-}
-
-function simulateRatTrigger(landerTeam, allTeams) {
-  const victimPick = simulatePickRatVictim(landerTeam, allTeams);
-  const victim = allTeams.find(t => Number(t.team_id) === Number(victimPick.victim_team_id));
-
-  if (!victim) {
-    return {
-      victim_team_id: landerTeam.team_id,
-      victim_from: landerTeam.current_tile,
-      victim_to: landerTeam.current_tile,
-      victim_snaked: false,
-      victim_snake_count: 0,
-      message: "🐀 Rat triggered, but no valid victim found."
-    };
-  }
-
-  const fromTile = Number(victim.current_tile);
-  const dieRoll = Math.floor(Math.random() * 6) + 1;
-  let newTile = Math.max(1, fromTile - dieRoll);
-
-  const eventLines = [];
-
-  const shift = simulateForwardShiftPastBlockedTiles(newTile, victim.completed, fromTile);
-
-  if (shift.skippedTiles.length > 0) {
-    newTile = shift.finalTile;
-    eventLines.push(
-      `➡️ Moved forward to tile ${newTile} because tiles ${formatSkippedTilesWithSnakes(shift.skippedTiles)} were already completed or snake heads.`
-    );
-  }
-
-  let victimSnaked = false;
-  let victimSnakeCount = 0;
-
-  if (SNAKES[newTile]) {
-    const snakeResult = simulateSnakeCascade(newTile, victim.completed);
-    newTile = snakeResult.finalTile;
-    victimSnaked = snakeResult.snakeCount > 0;
-    victimSnakeCount = snakeResult.snakeCount;
-    eventLines.push(...snakeResult.eventLines);
-  }
-
-  const message =
-    `🐀 ${landerTeam.team_name} triggered a rat. ` +
-    `${victim.team_name} rolled ${dieRoll} backwards: ${fromTile} → ${newTile}` +
-    (eventLines.length ? `\n${eventLines.join("\n")}` : "");
-
-  return {
-    victim_team_id: victim.team_id,
-    victim_from: fromTile,
-    victim_to: newTile,
-    victim_snaked: victimSnaked,
-    victim_snake_count: victimSnakeCount,
-    message: message
-  };
-}
-
-function simulatePickRatVictim(landerTeam, allTeams) {
-  if (Math.random() < RAT_SELF_PROBABILITY) {
-    return {
-      victim_team_id: landerTeam.team_id,
-      self_rat: true
-    };
-  }
-
-  const others = allTeams.filter(t =>
-    Number(t.team_id) !== Number(landerTeam.team_id) &&
-    Number(t.current_tile) >= 1 &&
-    !t.finished
-  );
-
-  if (others.length === 0) {
-    return {
-      victim_team_id: landerTeam.team_id,
-      self_rat: true
-    };
-  }
-
-  const weights = others.map(t => Number(t.current_tile) + 1);
-  const totalWeight = weights.reduce((a, b) => a + b, 0);
-
-  let pick = Math.random() * totalWeight;
-
-  for (let i = 0; i < others.length; i++) {
-    pick -= weights[i];
-
-    if (pick <= 0) {
-      return {
-        victim_team_id: others[i].team_id,
-        self_rat: false
-      };
-    }
-  }
-
-  return {
-    victim_team_id: others[others.length - 1].team_id,
-    self_rat: false
-  };
-}
-
-function writeSimulationOutput(teams, events, triggeredRats, roundsPlayed) {
-  const ss = getSpreadsheet();
-  const sheetName = "Simulation Output";
-
-  let sheet = ss.getSheetByName(sheetName);
-
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
-  }
-
-  sheet.clear();
-
-  sheet.getRange(1, 1).setValue("Full Game Simulation Output");
-  sheet.getRange(2, 1).setValue("Rounds played");
-  sheet.getRange(2, 2).setValue(roundsPlayed);
-
-  sheet.getRange(4, 1, 1, 10).setValues([[
-    "Team",
-    "Final Tile",
-    "Finished",
-    "Rolls",
-    "Completed Tiles",
-    "Rats Triggered",
-    "Ratted as Victim",
-    "Snake Bites",
-    "Skip Events",
-    "Bounce Events"
-  ]]);
-
-  const summaryRows = teams.map(t => [
-    t.team_name,
-    t.current_tile,
-    t.finished ? "YES" : "NO",
-    t.rolls,
-    t.completed_count,
-    t.rat_triggered_count,
-    t.rat_victim_count,
-    t.snake_count,
-    t.skip_count,
-    t.bounce_count
-  ]);
-
-  sheet.getRange(5, 1, summaryRows.length, 10).setValues(summaryRows);
-
-  sheet.getRange(11, 1).setValue("Triggered Rat Tiles");
-  sheet.getRange(11, 2).setValue(Array.from(triggeredRats).sort((a, b) => a - b).join(", "));
-
-  sheet.getRange(13, 1).setValue("Final Board Overview");
-
-  const boardRows = [];
-
-  for (let tile = 1; tile <= 100; tile++) {
-    const teamsHere = teams
-      .filter(t => Number(t.current_tile) === tile)
-      .map(t => t.team_name)
-      .join(", ");
-
-    const completedBy = teams
-      .filter(t => t.completed.has(tile))
-      .map(t => t.team_name)
-      .join(", ");
-
-    boardRows.push([
-      tile,
-      SNAKES[tile] ? `Snake → ${SNAKES[tile]}` : "",
-      RAT_TILES_LIST.includes(tile) ? "Rat" : "",
-      teamsHere,
-      completedBy
-    ]);
-  }
-
-  sheet.getRange(14, 1, 1, 5).setValues([[
-    "Tile",
-    "Snake",
-    "Rat",
-    "Team Currently Here",
-    "Completed By"
-  ]]);
-
-  sheet.getRange(15, 1, boardRows.length, 5).setValues(boardRows);
-
-  const eventStartRow = 117;
-  sheet.getRange(eventStartRow, 1).setValue("Event Log");
-
-  sheet.getRange(eventStartRow + 1, 1, 1, 9).setValues([[
-    "Round",
-    "Team ID",
-    "Team",
-    "Dice",
-    "From Tile",
-    "Rolled Landing Tile",
-    "Final Tile",
-    "Events",
-    "Rat Event"
-  ]]);
-
-  if (events.length > 0) {
-    sheet.getRange(eventStartRow + 2, 1, events.length, 9).setValues(events);
-  }
-
-  sheet.autoResizeColumns(1, 10);
-}
-
 function handleRerollGain(data) {
   const lock = LockService.getScriptLock();
   const hasLock = lock.tryLock(8000);
@@ -2808,7 +2373,7 @@ function handleRerollGain(data) {
     if (isWinner(team.team_id)) {
       return jsonResponse({
         success: false,
-        message: `🏆 ${team.team_name} has already won! No more reroll gains for you.`
+        message: `🏆 ${team.team_name} has already won! No more rollback gains for you.`
       });
     }
 
@@ -2848,7 +2413,7 @@ function handleRerollGain(data) {
       if (alreadyUsedPetRerollHere) {
         return jsonResponse({
           success: false,
-          message: `⚠️ ${team.team_name} already used the pet reroll mechanic on tile ${currentTile}.`
+          message: `⚠️ ${team.team_name} already used the pet rollback mechanic on tile ${currentTile}.`
         });
       }
     }
@@ -2863,14 +2428,14 @@ function handleRerollGain(data) {
       event_type: "REROLL_GAINED",
       from_tile: currentTile,
       to_tile: currentTile,
-      details: `Pet mechanic: gained 1 reroll instead of completing. New total: ${newAvailable}.`,
+      details: `Pet mechanic: gained 1 rollback instead of completing. New total: ${newAvailable}.`,
       discord_user: data.username || "",
       proof_url: data.proof_url || ""
     });
 
     return jsonResponse({
       success: true,
-      message: `🎲 ${team.team_name} traded their tile completion for a reroll! The tile is NOT marked complete. Rerolls available: ${newAvailable}.`,
+      message: `🎲 ${team.team_name} traded their tile completion for a rollback! The tile is NOT marked complete. Rollbacks available: ${newAvailable}.`,
       result: {
         team_id: team.team_id,
         team_name: team.team_name,
@@ -2884,9 +2449,12 @@ function handleRerollGain(data) {
   } catch (err) {
     return jsonResponse({
       success: false,
-      message: "Reroll gain failed: " + err.message
+      message: "Rollback gain failed: " + err.message
     });
   } finally {
     lock.releaseLock();
   }
+}
+function isDiscordRequest(data) {
+  return String(data && data.source || "").toLowerCase() === "discord";
 }
