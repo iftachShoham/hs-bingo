@@ -449,9 +449,9 @@ function rollBackwardsForTeam(teamId) {
   let newTile = Math.max(1, startTile - dieRoll);
   
   let eventMessage = `⏪ Rolled ${dieRoll} backwards`;
-  
-  // Forward-shift cap: shift past own completed tiles, but never past startTile
-  const completedShift = shiftForwardPastCompletedTiles(newTile, completed, startTile);
+
+  // Skip forward past fully-completed tiles (same logic as forward rolling)
+  const completedShift = shiftForwardPastCompletedTiles(newTile, completed, 100);
 
 if (completedShift.skippedTiles.length > 0) {
   newTile = completedShift.finalTile;
@@ -460,7 +460,7 @@ if (completedShift.skippedTiles.length > 0) {
     newTile
   )}`;
 }
-  
+
   // Snake cascade (loop to handle chained snakes, though rare)
   let safety = 0;
   while (safety++ < 20) {
@@ -1166,6 +1166,16 @@ function handleActivityLog() {
         tile:         Number(r[5]),
         discord_user: String(r[8] || "")
       });
+    } else if (evType === "ROLL" || evType === "RAT_TRIGGERED" || evType === "RAT_VICTIM") {
+      events.push({
+        timestamp:  r[0] ? new Date(r[0]).toISOString() : null,
+        team_id:    Number(r[1]),
+        team_name:  String(r[2]),
+        event_type: evType,
+        from_tile:  Number(r[4]),
+        to_tile:    Number(r[5]),
+        details:    String(r[7] || "")
+      });
     }
   });
   return ContentService.createTextOutput(JSON.stringify({ events }))
@@ -1345,7 +1355,7 @@ function handleRerollSpend(team, data) {
   let newTile = Math.max(1, fromTile - stepBack);
 
   // Forward-shift past own completed tiles
-  const shift = shiftForwardPastCompletedTiles(newTile, completed, fromTile);
+  const shift = shiftForwardPastCompletedTiles(newTile, completed, 100);
   const specialEvents = [];
   if (shift.skippedTiles.length > 0) {
     newTile = shift.finalTile;
