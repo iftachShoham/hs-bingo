@@ -62,20 +62,28 @@ function renderEventsOverview() {
     });
 
   // ── Rat triggers ── pair each RAT_TRIGGERED with its RAT_VICTIM row.
+  // RAT_VICTIM is always logged immediately after RAT_TRIGGERED in the sheet,
+  // but timestamps differ by milliseconds so we match by position instead.
+  // Self-rats have no RAT_VICTIM row — the causer is the victim.
   const rats = log
-    .filter(ev => ev.event_type === 'RAT_TRIGGERED')
-    .map(trig => {
-      const victim = log.find(v => v.event_type === 'RAT_VICTIM'
-                                && v.timestamp === trig.timestamp);
+    .map((ev, i) => ({ ev, i }))
+    .filter(({ ev }) => ev.event_type === 'RAT_TRIGGERED')
+    .map(({ ev: trig, i }) => {
+      const next = log[i + 1];
+      const victim = (next && next.event_type === 'RAT_VICTIM') ? next : null;
+      const isSelfRat = !victim;
       return {
         ts: trig.timestamp,
         ratTile: Number(trig.to_tile),
         causerId: trig.team_id,
         causerName: names[Number(trig.team_id)] || trig.team_name,
-        victimId: victim ? victim.team_id : null,
-        victimName: victim ? (names[Number(victim.team_id)] || victim.team_name) : '?',
-        from: victim ? Number(victim.from_tile) : null,
-        to: victim ? Number(victim.to_tile) : null
+        victimId: victim ? victim.team_id : trig.team_id,
+        victimName: victim
+          ? (names[Number(victim.team_id)] || victim.team_name)
+          : (names[Number(trig.team_id)] || trig.team_name),
+        from: victim ? Number(victim.from_tile) : Number(trig.from_tile),
+        to: victim ? Number(victim.to_tile) : Number(trig.to_tile),
+        isSelfRat
       };
     });
 
@@ -116,7 +124,7 @@ function renderEventsOverview() {
           </div>
           <div class="ev-card-body ev-rat-body">
             ${_teamPill(r.causerId, r.causerName)}
-            <span class="ev-arrow">triggered →</span>
+            <span class="ev-arrow">${r.isSelfRat ? 'self-rat →' : 'triggered →'}</span>
             ${_teamPill(r.victimId, r.victimName)}
             ${back ? `<span class="ev-move">${back}</span>` : ''}
           </div>
