@@ -2933,3 +2933,23 @@ body {
   #guide-tour-body { font-size: 11px; }
   .tour-dot { width: 5px; height: 5px; }
 }
+
+/* ── Snake & Rat events tab ── */
+.ev-group-title { font-weight:600; margin:0 0 8px; display:flex; align-items:center; gap:8px; }
+.ev-count { background:rgba(255,255,255,.12); border-radius:10px; padding:1px 8px; font-size:12px; }
+.ev-empty { color:#9a9a8a; font-style:italic; font-size:13px; }
+.ev-card { background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.08);
+           border-radius:8px; padding:8px 10px; margin-bottom:8px; }
+.ev-snake { border-left:3px solid #7bbf4c; }
+.ev-rat   { border-left:3px solid #c88a3a; }
+.ev-card-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.ev-time { font-size:12px; color:#9a9a8a; }
+.ev-badge { font-size:11px; padding:2px 8px; border-radius:6px; }
+.ev-badge-snake { background:rgba(123,191,76,.18); color:#a8e37a; }
+.ev-badge-rat   { background:rgba(200,138,58,.18); color:#e0a95c; }
+.ev-card-body { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:14px; }
+.ev-pill { color:#fff; font-size:12px; font-weight:600; padding:2px 8px; border-radius:12px; white-space:nowrap; }
+.ev-move { color:#cfcfc0; }
+.ev-move b { color:#fff; }
+.ev-arrow { color:#9a9a8a; font-size:12px; }
+.ev-rat-body { line-height:1.9; }

@@ -9,6 +9,7 @@ async function refreshActivityLog() {
       state.activityLog = data.events;
       if (state.boardData) renderCompletionsBar(state.boardData);
       renderStats(); // renderStats guards against hidden canvas internally
+      refreshEventsOverviewIfActive();
     }
   } catch (e) {
     console.warn('[activity-log]', e.message);
