@@ -213,6 +213,11 @@
           <div id="chart-legend" class="chart-legend"></div>
         </section>
 
+        <section class="panel-section" id="events-section">
+          <h3>🐍 Snake &amp; Rat Events</h3>
+          <div id="events-overview"></div>
+        </section>
+
         <section class="panel-section hidden" id="admin-section">
           <h3>🛡️ Game Master</h3>
           <div id="admin-controls">
@@ -269,6 +274,9 @@
       </button>
       <button class="tab-btn" data-tab="stats" onclick="switchTab('stats')">
         <span class="tab-icon">📊</span><span class="tab-label">Stats</span>
+      </button>
+      <button class="tab-btn" data-tab="events" onclick="switchTab('events')">
+        <span class="tab-icon">🐍</span><span class="tab-label">Events</span>
       </button>
       <button class="tab-btn" data-tab="log" onclick="switchTab('log')">
         <span class="tab-icon">📋</span><span class="tab-label">Log</span>
@@ -718,6 +726,7 @@
   <script src="js/ui.js"></script>
   <script src="js/board.js"></script>
   <script src="js/stats.js"></script>
+  <script src="js/events.js"></script>
   <script src="js/actions.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/auth.js"></script>

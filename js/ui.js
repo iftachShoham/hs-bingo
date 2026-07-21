@@ -74,6 +74,7 @@ function switchTab(name) {
   );
   if (isMobile()) _applyMobileTab(name);
   if (name === 'stats') renderStats();
+  if (name === 'events') renderEventsOverview();
 }
 
 function _applyMobileTab(name) {
@@ -102,9 +103,10 @@ function _applyMobileTab(name) {
   );
 
   const sectionsForTab = {
-    play:  ['task-section', 'roll-section', 'complete-section', 'admin-section'],
-    teams: ['teams-section', 'admin-section'],
-    stats: ['stats-section']
+    play:   ['task-section', 'roll-section', 'complete-section', 'admin-section'],
+    teams:  ['teams-section', 'admin-section'],
+    stats:  ['stats-section'],
+    events: ['events-section']
   };
 
   (sectionsForTab[name] || []).forEach(id => {
