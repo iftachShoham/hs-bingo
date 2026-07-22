@@ -9,6 +9,7 @@ A live multiplayer board-game web portal for the **High Society** OSRS clan's *S
    
 ---
 
+
 ## Table of Contents
 
 - [What It Is](#what-it-is)
