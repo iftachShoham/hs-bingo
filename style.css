@@ -1440,7 +1440,7 @@ body {
   border-radius: 1px;
   font-size: 12px;
 }
-.lb-medal { font-size: 16px; flex-shrink: 0; }
+.lb-medal { font-size: 14px; flex-shrink: 0; font-weight: 700; }
 .lb-name  { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lb-count {
   color: var(--accent);
