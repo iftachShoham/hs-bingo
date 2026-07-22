@@ -242,51 +242,50 @@ function renderChartLegend() {
   });
 }
 
-// ── Top 3 Players leaderboard ─────────────────────────
+// ── Team tile completions leaderboard ─────────────────
 
 function renderPlayerLeaderboard() {
   const el = document.getElementById('player-leaderboard');
   if (!el) return;
 
-  const events = state.activityLog || [];
-  const counts = {};
-  events.forEach(ev => {
-    const user = (ev.discord_user || '').trim();
-    if (user && user !== 'undefined' && user !== 'null') {
-      counts[user] = (counts[user] || 0) + 1;
-    }
+  const completedByTile = state.boardData?.completedByTile || {};
+  const teams = state.boardData?.teams || [];
+  const teamNames = {};
+  teams.forEach(t => { teamNames[Number(t.team_id)] = t.team_name; });
+
+  const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  Object.values(completedByTile).forEach(ids => {
+    ids.forEach(id => {
+      const tid = Number(id);
+      if (counts[tid] !== undefined) counts[tid]++;
+    });
   });
 
-  const top3   = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const rows = [1, 2, 3, 4]
+    .map(id => ({ id, count: counts[id], name: teamNames[id] || `Team ${id}` }))
+    .sort((a, b) => b.count - a.count);
+
   el.innerHTML = '';
 
-  if (top3.length === 0) {
-    const empty = document.createElement('span');
-    empty.style.cssText = 'color:var(--text-muted);font-size:11px;';
-    empty.textContent = 'No player data yet';
-    el.appendChild(empty);
-    return;
-  }
-
-  const medals = ['🥇', '🥈', '🥉'];
-  top3.forEach(([user, count], i) => {
-    const row   = document.createElement('div');
+  rows.forEach(({ id, count, name }) => {
+    const row = document.createElement('div');
     row.className = 'lb-row';
 
-    const medal = document.createElement('span');
-    medal.className   = 'lb-medal';
-    medal.textContent = medals[i];
+    const bullet = document.createElement('span');
+    bullet.className = 'lb-medal';
+    bullet.textContent = getTeamBullet(id);
+    bullet.style.color = TEAM_COLORS[id];
 
-    const name = document.createElement('span');
-    name.className   = 'lb-name';
-    name.textContent = user;
+    const nameEl = document.createElement('span');
+    nameEl.className = 'lb-name';
+    nameEl.textContent = name;
 
     const cnt = document.createElement('span');
-    cnt.className   = 'lb-count';
+    cnt.className = 'lb-count';
     cnt.textContent = `${count}`;
 
-    row.appendChild(medal);
-    row.appendChild(name);
+    row.appendChild(bullet);
+    row.appendChild(nameEl);
     row.appendChild(cnt);
     el.appendChild(row);
   });
