@@ -55,8 +55,10 @@ document.addEventListener("DOMContentLoaded", () => {
       // Tab is visible again and user is logged in — fetch right away, then restart intervals
       refreshBoard();
       refreshActivityLog();
-      state.pollTimer = setInterval(refreshBoard, 10000);
-      state.activityPollTimer = setInterval(refreshActivityLog, 30000);
+      const jitter = Math.random() * 1000 - 500;
+      state.pollTimer = setInterval(refreshBoard, 10000 + jitter);
+      const logJitter = Math.random() * 2000 - 1000;
+      state.activityPollTimer = setInterval(refreshActivityLog, 30000 + logJitter);
     }
   });
 

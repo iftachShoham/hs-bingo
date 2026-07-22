@@ -27,6 +27,26 @@ async function loadTileImages() {
   }
 }
 
+// Retry a fetch up to `tries` times with exponential-ish backoff before giving up.
+// Handles both network errors and non-ok HTTP responses (the transient 404 blip included).
+async function fetchWithRetry(url, options = {}, { tries = 3, baseDelay = 400 } = {}) {
+  let lastErr;
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      if (res.ok) return res;
+      lastErr = new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      lastErr = err;
+    }
+    if (attempt < tries) {
+      const delay = baseDelay * attempt + Math.random() * 200;
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
 // All team/admin commands
 // Routes through proxy worker when PROXY_URL is configured (enables Discord posting).
 // Falls back to calling Apps Script directly if proxy is unreachable or not deployed.
@@ -71,20 +91,18 @@ async function apiCommand(command, extra = {}) {
 
 // Board state — public GET endpoint on Apps Script, no auth needed
 async function apiFetchBoardState() {
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `${CONFIG.APPS_SCRIPT_URL}?view=boarddata&cb=${Date.now()}`,
     { redirect: "follow" }
   );
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
 // Activity log — public GET, returns all COMPLETE/EARLY_COMPLETE events in order
 async function apiFetchActivityLog() {
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `${CONFIG.APPS_SCRIPT_URL}?view=activitylog&cb=${Date.now()}`,
     { redirect: "follow" }
   );
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }

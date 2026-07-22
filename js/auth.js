@@ -111,7 +111,7 @@ function showLoginError(msg) {
 function logout() {
   clearInterval(state.pollTimer);
   clearInterval(state.activityPollTimer);
-  Object.assign(state, { channelId: null, team: null, isAdmin: false, isSpectator: false, boardData: null, pollTimer: null, playerName: null, proofFile: null, prevTaskContent: null, playerPasswordHash: null, activityLog: null, activityPollTimer: null });
+  Object.assign(state, { channelId: null, team: null, isAdmin: false, isSpectator: false, boardData: null, pollTimer: null, playerName: null, proofFile: null, prevTaskContent: null, playerPasswordHash: null, activityLog: null, activityPollTimer: null, boardFailCount: 0 });
   localStorage.removeItem("hs_cid");
   localStorage.removeItem("hs_pwh");
   document.getElementById("game-screen").classList.add("hidden");
@@ -168,14 +168,17 @@ function enterGame() {
   // Apply mobile tab layout before first render
   if (isMobile()) switchTab('board');
 
-  // Load tile images once, then kick off polling
+  // Load tile images once, then kick off polling.
+  // Jitter spreads clients across the interval so they don't all hit Apps Script simultaneously.
   loadTileImages().then(() => {
     refreshBoard().then(() => {
-      state.pollTimer = setInterval(refreshBoard, 10000);
+      const jitter = Math.random() * 1000 - 500; // ±500ms
+      state.pollTimer = setInterval(refreshBoard, 10000 + jitter);
     });
   });
 
-  // Activity log: initial fetch + 30s poll
+  // Activity log: initial fetch + 30s poll (with jitter)
   refreshActivityLog();
-  state.activityPollTimer = setInterval(refreshActivityLog, 30000);
+  const logJitter = Math.random() * 2000 - 1000; // ±1s
+  state.activityPollTimer = setInterval(refreshActivityLog, 30000 + logJitter);
 }
