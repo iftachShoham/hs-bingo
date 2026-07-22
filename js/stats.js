@@ -5,12 +5,19 @@
 async function refreshActivityLog() {
   try {
     const data = await apiFetchActivityLog();
-    if (data && Array.isArray(data.events)) {
-      state.activityLog = data.events;
-      if (state.boardData) renderCompletionsBar(state.boardData);
-      renderStats(); // renderStats guards against hidden canvas internally
-      renderEventsOverview();
-    }
+    if (!data || !Array.isArray(data.events)) return;
+
+    const newLen = data.events.length;
+    const oldLen = state.activityLog?.length ?? -1;
+
+    // Nothing changed — skip all rendering work
+    if (newLen === oldLen) return;
+
+    state.activityLog = data.events;
+
+    if (state.boardData) renderCompletionsBar(state.boardData);
+    renderStats();
+    renderEventsOverview();
   } catch (e) {
     console.warn('[activity-log]', e.message);
   }

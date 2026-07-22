@@ -46,4 +46,5 @@ const state = {
   playerPasswordHash: null,   // SHA-256 hex hash of the team password (null = no password)
   activityLog:        null,   // array of {timestamp,team_id,tile,discord_user} from activitylog endpoint
   activityPollTimer:  null,   // setInterval ID for 30s activity log refresh
+  boardFailCount:     0,      // consecutive board fetch failures; banner only shows after threshold
 };

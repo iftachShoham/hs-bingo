@@ -22,11 +22,9 @@ async function refreshBoard() {
       return;
     }
 
-    // Clear any previous error
-    const boardEl = document.getElementById("board-grid");
-    boardEl.style.removeProperty("display");
-    const errEl = document.getElementById("board-error");
-    if (errEl) errEl.remove();
+    // Clear any previous transient error and reset failure counter
+    state.boardFailCount = 0;
+    hideBoardError();
 
     detectMovements(data);
     state.boardData = data;
@@ -44,7 +42,10 @@ async function refreshBoard() {
     if (state.isAdmin) populateAdminDropdown(data.teams);
 
   } catch (err) {
-    showBoardError(`❌ Could not load board: ${err.message}\n\nCheck your APPS_SCRIPT_URL in app.js.`);
+    state.boardFailCount = (state.boardFailCount || 0) + 1;
+    if (state.boardFailCount >= 3) {
+      showBoardError(`⚠️ Board unreachable (${err.message}) — reconnecting…`);
+    }
   }
 }
 
@@ -61,6 +62,13 @@ function showBoardError(msg) {
   // Hide the grid so the error is prominent
   document.getElementById("board-grid").style.display = "none";
   addFeedEvent("err", msg.split("\n")[0]);
+}
+
+function hideBoardError() {
+  const boardEl = document.getElementById("board-grid");
+  boardEl.style.removeProperty("display");
+  const errEl = document.getElementById("board-error");
+  if (errEl) errEl.remove();
 }
 
 function detectMovements(newData) {
