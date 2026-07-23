@@ -40,6 +40,7 @@ async function refreshBoard() {
     renderTaskBox(data);
     updateHeaderTile();
     if (state.isAdmin) populateAdminDropdown(data.teams);
+    if (typeof renderRatMatrixIfOpen === 'function') renderRatMatrixIfOpen();
 
   } catch (err) {
     state.boardFailCount = (state.boardFailCount || 0) + 1;
