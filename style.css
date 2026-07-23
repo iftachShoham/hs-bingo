@@ -2212,6 +2212,167 @@ body {
   font-weight: 600;
 }
 
+/* ══ Rat Odds button ══ */
+#rat-odds-btn {
+  background: linear-gradient(180deg, var(--surface3) 0%, var(--surface2) 100%);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+#rat-odds-btn:hover {
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent2) 100%);
+  border-color: var(--accent-hi);
+  color: #000;
+  font-weight: 600;
+}
+
+/* ══ Rat Odds modal ══ */
+#rat-matrix-modal {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(0,0,0,0.82);
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(2px);
+}
+#rat-matrix-modal.hidden { display: none; }
+
+#rat-matrix-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 760px;
+  max-height: 88vh;
+  border-radius: 2px;
+  overflow: hidden;
+  background-color: #1e1508;
+  background-image: linear-gradient(160deg, #2a1e0a 0%, #1e1408 60%, #160e06 100%);
+  box-shadow: var(--frame), var(--bevel-up), 0 28px 90px rgba(0,0,0,0.96);
+}
+
+#rat-matrix-header {
+  flex-shrink: 0;
+  padding: 16px 44px 12px 20px;
+  border-bottom: 1px solid var(--border-lo);
+  background: linear-gradient(180deg, #2a1e0a 0%, #1e1508 100%);
+}
+#rat-matrix-title {
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--accent-hi);
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 12px rgba(200,164,40,0.4);
+}
+#rat-matrix-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+  letter-spacing: 0.03em;
+}
+
+#rat-matrix-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rat-matrix-empty {
+  color: var(--text-dim);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.rat-matrix-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12px;
+  color: var(--text);
+}
+.rat-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.rat-legend-dot {
+  width: 11px; height: 11px; border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.5);
+  display: inline-block;
+}
+.rat-legend-tile { color: var(--text-dim); font-size: 11px; }
+
+.rat-matrix-scroll { overflow-x: auto; }
+.rat-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: var(--text);
+}
+.rat-matrix-table th,
+.rat-matrix-table td {
+  padding: 8px 10px;
+  border: 1px solid var(--border-lo);
+  text-align: right;
+  white-space: nowrap;
+}
+.rat-matrix-table thead th {
+  color: var(--text-dim);
+  font-weight: 600;
+  background: rgba(90,64,21,0.18);
+  text-align: right;
+}
+.rat-matrix-table .rat-corner,
+.rat-matrix-table .rat-row-head {
+  text-align: left;
+  color: var(--text);
+  font-weight: 600;
+  background: rgba(90,64,21,0.18);
+  position: sticky;
+  left: 0;
+}
+.rat-th-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  display: inline-block; margin-right: 6px;
+  border: 1px solid rgba(0,0,0,0.5);
+  vertical-align: baseline;
+}
+.rat-cell { font-variant-numeric: tabular-nums; color: #f6ead0; }
+.rat-cell-self { font-weight: 700; color: var(--accent-hi); }
+.rat-cell-na { color: var(--text-muted); text-align: center; }
+
+.rat-matrix-observations {
+  border-top: 1px solid var(--border-lo);
+  padding-top: 12px;
+}
+.rat-obs-title {
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+.rat-matrix-observations ul { margin: 0; padding-left: 18px; }
+.rat-matrix-observations li {
+  font-size: 12.5px;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+.rat-matrix-observations strong { color: var(--accent-hi); font-weight: 700; }
+
 /* ── Spectator ghost-mode toast ── */
 #spectator-toast {
   position: fixed;
