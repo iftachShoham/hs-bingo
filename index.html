@@ -75,7 +75,6 @@
         <span id="header-tile-badge" class="badge badge-tile"></span>
         <span id="poll-dot" title="Live updates active">●</span>
         <button id="qa-tile-btn" onclick="openQaTile()" title="Q&A Tile — what counts per tile type">📋 Q&amp;A Tile</button>
-        <button id="rat-odds-btn" onclick="openRatMatrix()" title="Rat odds — live chance each team gets ratted">🐀 Rat Odds</button>
         <button id="guide-btn" onclick="openGuide()" title="How to Play">📖 Guide</button>
         <button class="btn-ghost" id="logout-btn">Logout</button>
       </div>
@@ -621,20 +620,6 @@
     </div><!-- /guide-card -->
   </div><!-- /guide-modal -->
 
-  <!-- ── Rat Odds Matrix Modal ── -->
-  <div id="rat-matrix-modal" class="hidden" onclick="closeRatMatrix()">
-    <div id="rat-matrix-card" onclick="event.stopPropagation()">
-      <button class="tile-modal-close" onclick="closeRatMatrix()">✕</button>
-      <div id="rat-matrix-header">
-        <div id="rat-matrix-title">🐀 Rat Victim Odds</div>
-        <div id="rat-matrix-subtitle">Live chance each team gets hit when another lands on a rat tile</div>
-      </div>
-      <div id="rat-matrix-body">
-        <!-- filled by renderRatMatrix() -->
-      </div>
-    </div>
-  </div>
-
   <!-- ── Q&A Tile Modal ── -->
   <div id="qa-tile-modal" class="hidden" onclick="closeQaTile()">
     <div id="qa-tile-card" onclick="event.stopPropagation()">
@@ -747,6 +732,5 @@
   <script src="js/auth.js"></script>
   <script src="js/main.js"></script>
   <script src="js/guide.js"></script>
-  <script src="js/rat-matrix.js"></script>
 </body>
 </html>
