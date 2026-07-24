@@ -365,7 +365,7 @@ function clearTeamDisplayCell(teamId) {
 // RAT MECHANIC — hidden traps, victim selection, backwards roll
 // ============================================================
 
-const RAT_TILES_LIST = [7, 8, 12, 13, 22, 29, 31, 36, 40, 55, 67, 72, 82, 87];
+const RAT_TILES_LIST = [7, 8, 12, 13, 22, 29, 31, 36, 40, 55, 72];
 const RAT_SELF_PROBABILITY = 0.20;
 const TRIGGERED_RATS_KEY = "triggered_rats";
 
