@@ -365,7 +365,7 @@ function clearTeamDisplayCell(teamId) {
 // RAT MECHANIC — hidden traps, victim selection, backwards roll
 // ============================================================
 
-const RAT_TILES_LIST = [7, 8, 12, 13, 22, 31, 44, 67, 71, 82, 95];
+const RAT_TILES_LIST = [7, 8, 12, 13, 22, 29, 31, 36, 40, 55, 67, 72, 82, 87];
 const RAT_SELF_PROBABILITY = 0.20;
 const TRIGGERED_RATS_KEY = "triggered_rats";
 
@@ -449,9 +449,9 @@ function rollBackwardsForTeam(teamId) {
   let newTile = Math.max(1, startTile - dieRoll);
   
   let eventMessage = `⏪ Rolled ${dieRoll} backwards`;
-
-  // Skip forward past fully-completed tiles (same logic as forward rolling)
-  const completedShift = shiftForwardPastCompletedTiles(newTile, completed, 100);
+  
+  // Forward-shift cap: shift past own completed tiles, but never past startTile
+  const completedShift = shiftForwardPastCompletedTiles(newTile, completed, startTile);
 
 if (completedShift.skippedTiles.length > 0) {
   newTile = completedShift.finalTile;
@@ -460,7 +460,7 @@ if (completedShift.skippedTiles.length > 0) {
     newTile
   )}`;
 }
-
+  
   // Snake cascade (loop to handle chained snakes, though rare)
   let safety = 0;
   while (safety++ < 20) {
@@ -1166,7 +1166,8 @@ function handleActivityLog() {
         tile:         Number(r[5]),
         discord_user: String(r[8] || "")
       });
-    } else if (evType === "ROLL" || evType === "RAT_TRIGGERED" || evType === "RAT_VICTIM") {
+    }
+    else if (evType === "ROLL" || evType === "RAT_TRIGGERED" || evType === "RAT_VICTIM") {
       events.push({
         timestamp:  r[0] ? new Date(r[0]).toISOString() : null,
         team_id:    Number(r[1]),
@@ -1179,7 +1180,7 @@ function handleActivityLog() {
     }
   });
   return ContentService.createTextOutput(JSON.stringify({ events }))
-    .setMimeType(ContentService.MimeType.JSON);
+    .setMimeType(ContentService.MimeType.JSON); 
 }  
 function handleReset(data) {
   try {
@@ -1355,7 +1356,7 @@ function handleRerollSpend(team, data) {
   let newTile = Math.max(1, fromTile - stepBack);
 
   // Forward-shift past own completed tiles
-  const shift = shiftForwardPastCompletedTiles(newTile, completed, 100);
+  const shift = shiftForwardPastCompletedTiles(newTile, completed, fromTile);
   const specialEvents = [];
   if (shift.skippedTiles.length > 0) {
     newTile = shift.finalTile;
